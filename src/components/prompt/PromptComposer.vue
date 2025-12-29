@@ -38,6 +38,7 @@ const AUTO_SAVE_DELAY = 1000; // 1秒
 // 拖拽状态
 const draggedIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
+const isDragEnabled = ref(false);
 
 // 角色选项
 const roleOptions = [
@@ -132,9 +133,23 @@ function updateMessage(id: string, patch: Partial<UserPromptPreset>) {
   );
 }
 
-// 拖拽开始
-function handleDragStart(index: number) {
+// 拖拽开始 - 只有从 drag-handle 触发才允许
+function handleDragStart(e: DragEvent, index: number) {
+  if (!isDragEnabled.value) {
+    e.preventDefault();
+    return;
+  }
   draggedIndex.value = index;
+}
+
+// 在 drag-handle 上按下鼠标时启用拖拽
+function handleDragHandleMouseDown() {
+  isDragEnabled.value = true;
+}
+
+// 鼠标松开时禁用拖拽
+function handleMouseUp() {
+  isDragEnabled.value = false;
 }
 
 // 拖拽经过
@@ -164,6 +179,7 @@ function handleDrop(targetIndex: number) {
 function handleDragEnd() {
   draggedIndex.value = null;
   dragOverIndex.value = null;
+  isDragEnabled.value = false;
 }
 
 // 获取角色颜色
@@ -197,14 +213,18 @@ onUnmounted(() => {
             'is-dragging': draggedIndex === index,
             'is-drag-over': dragOverIndex === index
           }"
-          draggable="true"
-          @dragstart="handleDragStart(index)"
+          :draggable="isDragEnabled"
+          @dragstart="(e: DragEvent) => handleDragStart(e, index)"
           @dragover="(e) => handleDragOver(e, index)"
           @drop="handleDrop(index)"
           @dragend="handleDragEnd"
+          @mouseup="handleMouseUp"
         >
           <div class="message-header">
-            <div class="drag-handle">
+            <div 
+              class="drag-handle"
+              @mousedown="handleDragHandleMouseDown"
+            >
               <HolderOutlined />
             </div>
             

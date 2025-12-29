@@ -115,6 +115,9 @@ function handleClose() {
   emit('update:open', false);
 }
 
+// Tooltip 容器获取函数
+const getTooltipContainer = (node: HTMLElement) => node.parentElement || document.body;
+
 // 保存参数
 function handleSave() {
   if (!hasCustomValues.value) {
@@ -168,13 +171,7 @@ function handleSave() {
 
       <Form layout="vertical" class="params-form">
         <!-- Temperature -->
-        <Form.Item>
-          <template #label>
-            <div class="param-label">
-              <span>Temperature</span>
-              <span class="default-hint">默认: {{ props.defaultParams.temperature }}</span>
-            </div>
-          </template>
+        <Form.Item label="Temperature">
           <div class="param-input-row">
             <InputNumber
               v-model:value="localParams.temperature"
@@ -184,7 +181,7 @@ function handleSave() {
               :placeholder="String(props.defaultParams.temperature)"
               class="param-input"
             />
-            <Tooltip title="重置为默认值">
+            <Tooltip title="重置为默认值" :get-popup-container="getTooltipContainer">
               <Button 
                 type="text" 
                 size="small"
@@ -198,13 +195,7 @@ function handleSave() {
         </Form.Item>
 
         <!-- Top P -->
-        <Form.Item>
-          <template #label>
-            <div class="param-label">
-              <span>Top P</span>
-              <span class="default-hint">默认: {{ props.defaultParams.top_p }}</span>
-            </div>
-          </template>
+        <Form.Item label="Top P">
           <div class="param-input-row">
             <InputNumber
               v-model:value="localParams.top_p"
@@ -214,7 +205,7 @@ function handleSave() {
               :placeholder="String(props.defaultParams.top_p)"
               class="param-input"
             />
-            <Tooltip title="重置为默认值">
+            <Tooltip title="重置为默认值" :get-popup-container="getTooltipContainer">
               <Button 
                 type="text" 
                 size="small"
@@ -228,13 +219,7 @@ function handleSave() {
         </Form.Item>
 
         <!-- Max Tokens -->
-        <Form.Item>
-          <template #label>
-            <div class="param-label">
-              <span>Max Tokens</span>
-              <span class="default-hint">默认: {{ props.defaultParams.max_tokens }}</span>
-            </div>
-          </template>
+        <Form.Item label="Max Tokens">
           <div class="param-input-row">
             <InputNumber
               v-model:value="localParams.max_tokens"
@@ -244,7 +229,7 @@ function handleSave() {
               :placeholder="String(props.defaultParams.max_tokens)"
               class="param-input"
             />
-            <Tooltip title="重置为默认值">
+            <Tooltip title="重置为默认值" :get-popup-container="getTooltipContainer">
               <Button 
                 type="text" 
                 size="small"
@@ -258,20 +243,15 @@ function handleSave() {
         </Form.Item>
 
         <!-- Stream 流式输出 -->
-        <Form.Item>
-          <template #label>
-            <div class="param-label">
-              <span>流式输出</span>
-              <span class="default-hint">默认: {{ (props.defaultParams.stream ?? true) ? '开启' : '关闭' }}</span>
-            </div>
-          </template>
+        <Form.Item label="流式输出">
           <div class="param-input-row">
             <Switch
-              v-model:checked="localParams.stream"
+              :checked="localParams.stream ?? (props.defaultParams.stream ?? true)"
               checked-children="开"
               un-checked-children="关"
+              @change="(val) => localParams.stream = Boolean(val)"
             />
-            <Tooltip title="重置为默认值">
+            <Tooltip title="重置为默认值" :get-popup-container="getTooltipContainer">
               <Button 
                 type="text" 
                 size="small"
@@ -295,20 +275,15 @@ function handleSave() {
           <span>启用后，支持的模型（如 Claude 3.5+）将输出思考过程。</span>
         </div>
 
-        <Form.Item>
-          <template #label>
-            <div class="param-label">
-              <span>启用深度思考</span>
-              <span class="default-hint">默认: {{ defaultThinking?.enabled ? '开启' : '关闭' }}</span>
-            </div>
-          </template>
+        <Form.Item label="启用深度思考">
           <div class="param-input-row">
             <Switch
-              v-model:checked="localParams.thinking_enabled"
+              :checked="localParams.thinking_enabled ?? (defaultThinking?.enabled ?? false)"
               checked-children="开"
               un-checked-children="关"
+              @change="(val) => localParams.thinking_enabled = Boolean(val)"
             />
-            <Tooltip title="重置为默认值">
+            <Tooltip title="重置为默认值" :get-popup-container="getTooltipContainer">
               <Button 
                 type="text" 
                 size="small"
@@ -321,13 +296,7 @@ function handleSave() {
           </div>
         </Form.Item>
 
-        <Form.Item v-if="localParams.thinking_enabled || (localParams.thinking_enabled === undefined && defaultThinking?.enabled)">
-          <template #label>
-            <div class="param-label">
-              <span>思考 Token 预算</span>
-              <span class="default-hint">默认: {{ defaultThinking?.budget_tokens ?? 10000 }}</span>
-            </div>
-          </template>
+        <Form.Item v-if="localParams.thinking_enabled || (localParams.thinking_enabled === undefined && defaultThinking?.enabled)" label="思考 Token 预算">
           <div class="param-input-row">
             <InputNumber
               v-model:value="localParams.thinking_budget_tokens"
@@ -340,18 +309,13 @@ function handleSave() {
           </div>
         </Form.Item>
 
-        <Form.Item v-if="!(localParams.thinking_enabled || (localParams.thinking_enabled === undefined && defaultThinking?.enabled))">
-          <template #label>
-            <div class="param-label">
-              <span>强制发送参数</span>
-              <span class="default-hint">默认: {{ defaultThinking?.force_send ? '开启' : '关闭' }}</span>
-            </div>
-          </template>
+        <Form.Item v-if="!(localParams.thinking_enabled || (localParams.thinking_enabled === undefined && defaultThinking?.enabled))" label="强制发送参数">
           <div class="param-input-row">
             <Switch
-              v-model:checked="localParams.thinking_force_send"
+              :checked="localParams.thinking_force_send ?? (defaultThinking?.force_send ?? false)"
               checked-children="开"
               un-checked-children="关"
+              @change="(val) => localParams.thinking_force_send = Boolean(val)"
             />
           </div>
           <div class="param-help">GPT 模型默认不发送 thinking 参数。开启后将强制发送 thinking: false</div>
@@ -414,19 +378,6 @@ function handleSave() {
 
 .params-form :deep(.ant-form-item) {
   margin-bottom: 12px;
-}
-
-.param-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.default-hint {
-  font-size: 11px;
-  color: var(--text-tertiary, #999);
-  font-weight: normal;
 }
 
 .param-input-row {
