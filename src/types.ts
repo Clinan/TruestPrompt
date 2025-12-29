@@ -6,7 +6,7 @@ export type PluginRequest = {
   modelId: string;
   enableSuggestions: boolean;
   stream: boolean;
-  messages?: Array<{ role: string; content: string }>;
+  messages?: Array<{ role: string; content: string; images?: ImageContent[] }>;
 };
 
 export type PluginInvokeOptions = {
@@ -91,10 +91,21 @@ export type HistoryItem = {
   };
 };
 
+// 图片内容类型 - 支持 URL 和 Base64 两种方式
+export type ImageContent = {
+  id: string;
+  type: 'url' | 'base64';
+  url?: string;           // type === 'url' 时使用
+  base64?: string;        // type === 'base64' 时使用（不含 data: 前缀）
+  mimeType?: string;      // type === 'base64' 时使用，如 'image/png'
+  name?: string;          // 文件名（可选，用于显示）
+};
+
 export type UserPromptPreset = {
   id: string;
   role: 'system' | 'user' | 'assistant';
   text: string;
+  images?: ImageContent[];  // 图片列表（仅 user 角色使用）
 };
 
 export type VariableBinding = {

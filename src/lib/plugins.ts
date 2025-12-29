@@ -1,9 +1,20 @@
-import type { Plugin, ProviderProfile, ToolCall, PluginChunk } from '../types';
+import type { Plugin, ProviderProfile, ToolCall, PluginChunk, ImageContent } from '../types';
 import { assertToolsDefinition } from './tools';
 import { hasMeaningfulContent } from './textUtils';
+import { buildDataUrl } from './imageUtils';
 
 type PluginRequest = import('../types').PluginRequest;
 type PluginInvokeOptions = import('../types').PluginInvokeOptions;
+
+// OpenAI Vision API 消息内容类型
+type VisionContentPart = 
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
+type VisionMessage = {
+  role: string;
+  content: string | VisionContentPart[];
+};
 
 type OpenAICompatibleConfig = {
   id: string;
@@ -153,24 +164,85 @@ async function* streamOpenAIStyle(resp: Response): AsyncGenerator<PluginChunk, v
   }
 }
 
-function normalizeMessages(request: PluginRequest) {
+/**
+ * 将图片转换为 OpenAI Vision API 格式的 image_url 内容
+ */
+function imageToVisionContent(image: ImageContent): VisionContentPart {
+  let url: string;
+  
+  if (image.type === 'url') {
+    url = image.url || '';
+  } else {
+    // Base64 图片需要构建 data URL
+    url = buildDataUrl(image.base64 || '', image.mimeType || 'image/png');
+  }
+  
+  return {
+    type: 'image_url',
+    image_url: { url }
+  };
+}
+
+/**
+ * 构建带图片的消息内容（OpenAI Vision API 格式）
+ */
+function buildVisionContent(text: string, images?: ImageContent[]): string | VisionContentPart[] {
+  // 如果没有图片，返回纯文本
+  if (!images || images.length === 0) {
+    return text;
+  }
+  
+  // 有图片时，构建 content 数组
+  const content: VisionContentPart[] = [];
+  
+  // 添加文本内容（如果有）
+  if (hasMeaningfulContent(text)) {
+    content.push({ type: 'text', text });
+  }
+  
+  // 添加图片内容
+  for (const image of images) {
+    content.push(imageToVisionContent(image));
+  }
+  
+  return content;
+}
+
+function normalizeMessages(request: PluginRequest): VisionMessage[] {
   const normalizedMessages = Array.isArray(request.messages)
     ? request.messages
-        .map((msg) => ({
-          role: msg && typeof msg.role === 'string' ? msg.role : 'user',
-          content: typeof msg.content === 'string' ? msg.content : ''
-        }))
-        .filter((msg) => hasMeaningfulContent(msg.content))
+        .map((msg) => {
+          const role = msg && typeof msg.role === 'string' ? msg.role : 'user';
+          const text = typeof msg.content === 'string' ? msg.content : '';
+          const images = Array.isArray((msg as any).images) ? (msg as any).images as ImageContent[] : undefined;
+          
+          return {
+            role,
+            content: buildVisionContent(text, images)
+          };
+        })
+        .filter((msg) => {
+          // 过滤无意义内容：纯文本需要有内容，或者有图片
+          if (typeof msg.content === 'string') {
+            return hasMeaningfulContent(msg.content);
+          }
+          // content 是数组时，至少要有一个元素
+          return Array.isArray(msg.content) && msg.content.length > 0;
+        })
     : null;
+    
   // 过滤无意义内容的 user prompts
   const fallbackMessages = request.userPrompts
     .filter((content) => hasMeaningfulContent(content))
     .map((content) => ({ role: 'user', content }));
-  const messages = normalizedMessages?.length ? normalizedMessages.slice() : fallbackMessages.slice();
+    
+  const messages: VisionMessage[] = normalizedMessages?.length ? normalizedMessages.slice() : fallbackMessages.slice();
+  
   // 只有有意义内容的 system prompt 才添加
   if (hasMeaningfulContent(request.systemPrompt)) {
     messages.unshift({ role: 'system', content: request.systemPrompt });
   }
+  
   return messages;
 }
 
@@ -370,6 +442,10 @@ function createOpenAICompatiblePlugin(options: OpenAICompatibleConfig): Plugin {
     }
   };
 }
+
+// 导出用于测试的函数
+export { imageToVisionContent, buildVisionContent, normalizeMessages };
+export type { VisionContentPart, VisionMessage };
 
 export const plugins: Plugin[] = [
   createOpenAICompatiblePlugin({

@@ -276,7 +276,12 @@ function serializeEditorState(): PersistedEditorState {
   return {
     version: 3,
     shared: {
-      userPrompts: shared.userPrompts.map((p) => ({ id: p.id, role: p.role, text: p.text })),
+      userPrompts: shared.userPrompts.map((p) => ({ 
+        id: p.id, 
+        role: p.role, 
+        text: p.text,
+        images: p.images // 保存图片数据
+      })),
       toolsDefinition: shared.toolsDefinition,
       variables: shared.variables.map((v) => ({ id: v.id, key: v.key, value: v.value })),
       defaultParams: { ...shared.defaultParams },
@@ -313,7 +318,8 @@ function loadEditorState() {
           .map((p) => ({
             id: p.id,
             role: (p.role === 'system' || p.role === 'assistant' ? p.role : 'user') as 'user' | 'system' | 'assistant',
-            text: typeof p.text === 'string' ? p.text : ''
+            text: typeof p.text === 'string' ? p.text : '',
+            images: Array.isArray(p.images) ? p.images : undefined // 恢复图片数据
           }))
       : [];
 
@@ -804,9 +810,11 @@ function buildRequest(slot: Slot): PluginRequest {
   const composerMessages = shared.userPrompts
     .map((message) => ({
       role: message.role || 'user',
-      content: renderTemplate(message.text, variables)
+      content: renderTemplate(message.text, variables),
+      // 传递图片数据（仅 user 角色消息有图片）
+      images: message.images
     }))
-    .filter((msg) => msg.content.trim().length > 0);
+    .filter((msg) => msg.content.trim().length > 0 || (msg.images && msg.images.length > 0));
   const userOnlyPrompts = composerMessages.filter((msg) => msg.role !== 'system').map((msg) => msg.content);
   
   // 计算 stream 参数：Slot 覆盖 > 全局默认参数 > 全局 streamOutput
