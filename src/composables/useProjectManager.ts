@@ -1,10 +1,9 @@
 import { ref, computed, watch, type Ref, type ComputedRef } from 'vue';
-import type { ProjectMetadata } from '../types';
+import type { ProjectMetadata, GatewayConfig } from '../types';
 import { newId } from '../lib/id';
 import {
   getItem,
   setItem,
-  removeItem,
   setCurrentProjectId,
   clearProjectData,
   STORAGE_KEYS,
@@ -49,11 +48,20 @@ export interface UseProjectManagerReturn {
   currentProject: ComputedRef<ProjectMetadata | undefined>;
   sortedProjects: ComputedRef<ProjectMetadata[]>;
   
+  // Gateway mode
+  isGatewayMode: ComputedRef<boolean>;
+  gatewayConfig: ComputedRef<GatewayConfig | undefined>;
+  
   // Operations
   createProject: (name: string) => ProjectMetadata | null;
   renameProject: (projectId: string, newName: string) => boolean;
   deleteProject: (projectId: string) => Promise<boolean>;
   switchProject: (projectId: string) => Promise<void>;
+  
+  // Gateway mode operations
+  enableGatewayMode: (config: GatewayConfig) => void;
+  disableGatewayMode: () => void;
+  updateProject: (projectId: string, updates: Partial<ProjectMetadata>) => boolean;
   
   // Lifecycle
   initialize: () => void;
@@ -70,6 +78,15 @@ export function useProjectManager(options: UseProjectManagerOptions = {}): UsePr
   const currentProject = computed(() => 
     projects.value.find(p => p.id === currentProjectId.value)
   );
+  
+  // Gateway mode computed properties
+  const isGatewayMode = computed(() => {
+    return !!currentProject.value?.gateway?.enabled;
+  });
+  
+  const gatewayConfig = computed(() => {
+    return currentProject.value?.gateway;
+  });
   
   // Sort projects by updatedAt descending (most recent first)
   // Default project always stays at top if it's the current one
@@ -258,6 +275,69 @@ export function useProjectManager(options: UseProjectManagerOptions = {}): UsePr
     await onAfterSwitch?.(projectId);
   }
   
+  // Gateway mode operations
+  function enableGatewayMode(config: GatewayConfig): void {
+    const projectIndex = projects.value.findIndex(p => p.id === currentProjectId.value);
+    if (projectIndex === -1) {
+      console.warn('[useProjectManager] Current project not found');
+      return;
+    }
+    
+    const updatedProject = {
+      ...projects.value[projectIndex],
+      gateway: { ...config, enabled: true },
+      updatedAt: Date.now(),
+    };
+    
+    projects.value = [
+      ...projects.value.slice(0, projectIndex),
+      updatedProject,
+      ...projects.value.slice(projectIndex + 1),
+    ];
+  }
+  
+  function disableGatewayMode(): void {
+    const projectIndex = projects.value.findIndex(p => p.id === currentProjectId.value);
+    if (projectIndex === -1) {
+      console.warn('[useProjectManager] Current project not found');
+      return;
+    }
+    
+    const updatedProject = {
+      ...projects.value[projectIndex],
+      gateway: undefined,
+      updatedAt: Date.now(),
+    };
+    
+    projects.value = [
+      ...projects.value.slice(0, projectIndex),
+      updatedProject,
+      ...projects.value.slice(projectIndex + 1),
+    ];
+  }
+  
+  function updateProject(projectId: string, updates: Partial<ProjectMetadata>): boolean {
+    const projectIndex = projects.value.findIndex(p => p.id === projectId);
+    if (projectIndex === -1) {
+      console.warn('[useProjectManager] Project not found:', projectId);
+      return false;
+    }
+    
+    const updatedProject = {
+      ...projects.value[projectIndex],
+      ...updates,
+      updatedAt: Date.now(),
+    };
+    
+    projects.value = [
+      ...projects.value.slice(0, projectIndex),
+      updatedProject,
+      ...projects.value.slice(projectIndex + 1),
+    ];
+    
+    return true;
+  }
+  
   function initialize(): void {
     loadProjects();
     loadCurrentProjectId();
@@ -269,10 +349,15 @@ export function useProjectManager(options: UseProjectManagerOptions = {}): UsePr
     currentProjectId,
     currentProject,
     sortedProjects,
+    isGatewayMode,
+    gatewayConfig,
     createProject,
     renameProject,
     deleteProject,
     switchProject,
+    enableGatewayMode,
+    disableGatewayMode,
+    updateProject,
     initialize,
   };
 }

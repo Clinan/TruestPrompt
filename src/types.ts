@@ -20,6 +20,35 @@ export type ProviderProfile = {
   apiKey: string;
   baseUrl: string;
   pluginId: string;
+  // 网关 Provider ID（存在则表示这是从网关导入的 Provider）
+  gatewayProviderId?: string;
+};
+
+// LLM Proxy Gateway 配置
+export type GatewayConfig = {
+  enabled: boolean;
+  baseUrl: string;           // 网关基础 URL，如 https://admin.example.com
+  clientId: string;          // OAuth Client ID
+  // OAuth 端点配置（可选，有默认值）
+  authorizeEndpoint?: string;  // 授权端点，默认 /oauth/authorize
+  tokenEndpoint?: string;      // Token 端点，默认 /oauth/token
+  redirectPath?: string;       // 回调路径，默认 /auth/callback
+};
+
+// 网关 Provider 信息（从网关 API 获取）
+export type GatewayProvider = {
+  id: string;
+  name: string;
+  defaultUrl: string;
+  defaultModelsUrl: string;
+  fallbackModels: { id: string; label: string }[];
+};
+
+// OAuth Token 信息
+export type TokenInfo = {
+  accessToken: string;
+  expiresAt: number;         // Unix timestamp in ms
+  projectId: string;         // 关联的项目 ID
 };
 
 export type Plugin = {
@@ -141,6 +170,7 @@ export type ProviderProfileDraft = {
   apiKey: string;
   baseUrl: string;
   pluginId: string;
+  gatewayProviderId?: string;
 };
 
 // Project Management Types
@@ -149,4 +179,6 @@ export type ProjectMetadata = {
   name: string;
   createdAt: number;
   updatedAt: number;
+  // 网关配置（可选，存在且 enabled=true 表示网关模式）
+  gateway?: GatewayConfig;
 };

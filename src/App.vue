@@ -8,7 +8,8 @@ import type {
   ProviderProfileDraft,
   SharedState,
   Slot,
-  UserPromptPreset
+  UserPromptPreset,
+  GatewayConfig
 } from './types';
 import { plugins } from './lib/plugins';
 import { newId } from './lib/id';
@@ -25,6 +26,8 @@ import {
   migrateToProjectNamespace,
 } from './lib/storage';
 import { useProjectManager } from './composables/useProjectManager';
+import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
+import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './lib/gatewayPlugin';
 
 // 新组件导入
 import AppToolbar from './components/layout/AppToolbar.vue';
@@ -62,6 +65,7 @@ const defaultSharedParams = {
 // 状态
 const providerProfiles = ref<ProviderProfile[]>([]);
 const historyItems = ref<HistoryItem[]>([]);
+const gatewayProviders = ref<any[]>([]);
 
 // 模态框状态
 const showHistory = ref(false);
@@ -98,7 +102,7 @@ const projectManager = useProjectManager({
   },
 });
 
-const { projects, currentProjectId, sortedProjects, createProject, renameProject, deleteProject, switchProject } = projectManager;
+const { projects, currentProjectId, currentProject, sortedProjects, gatewayConfig, createProject, renameProject, deleteProject, switchProject, enableGatewayMode, disableGatewayMode } = projectManager;
 
 // 代码对话框
 const codeDialogOpen = ref(false);
@@ -388,6 +392,11 @@ function loadProfiles() {
   }
   const parsed = stored ? (JSON.parse(stored) as ProviderProfile[]) : [];
   providerProfiles.value = parsed.map((profile) => {
+    // 网关 Provider（有 gatewayProviderId）保持原样
+    if (profile.gatewayProviderId) {
+      return profile;
+    }
+    // 本地模式的 profile 需要验证 pluginId
     const plugin = plugins.find((p) => p.id === profile.pluginId) ?? plugins[0];
     return {
       ...profile,
@@ -457,6 +466,39 @@ function resetNewProfile() {
   newProfile.apiKey = '';
   newProfile.pluginId = plugins[0].id;
   newProfile.baseUrl = plugins[0].defaultBaseUrl || 'https://api.openai.com/v1/chat/completions';
+}
+
+// Gateway handlers - 网关和本地 Provider 共存模式
+function handleSaveGatewayConfig(config: GatewayConfig) {
+  // 保存网关配置到项目（不清空现有 providers）
+  enableGatewayMode(config);
+}
+
+function handleDisconnectGateway() {
+  // 断开网关连接：清除配置和 token，但保留已导入的 providers
+  disableGatewayMode();
+  gatewayProviders.value = [];
+}
+
+function handleImportGatewayProviders(newProfiles: ProviderProfile[]) {
+  // 导入网关 providers（追加到现有列表）
+  providerProfiles.value = [...providerProfiles.value, ...newProfiles];
+  saveProfiles();
+  
+  // 如果没有 slot，创建一个
+  if (!slots.value.length) {
+    slots.value = [createSlot()];
+  }
+  
+  // 刷新所有 slot 的模型列表
+  Promise.all(slots.value.map(slot => refreshModelsForSlot(slot)));
+  saveEditorState();
+}
+
+// 处理网关登出（仅清除 token，不删除 providers）
+function handleGatewayLogout() {
+  // 清空 gateway providers 缓存
+  gatewayProviders.value = [];
 }
 
 function addProfile() {
@@ -595,8 +637,83 @@ function getModelsCacheKey(slot: Slot) {
   const pluginId = resolvePluginId(slot);
   const plugin = getPlugin(slot);
   const profile = getProfile(slot);
-  const baseUrl = profile?.baseUrl || plugin.defaultBaseUrl || '';
+  const baseUrl = profile?.baseUrl || plugin?.defaultBaseUrl || '';
   return `${pluginId}::${baseUrl}`;
+}
+
+// OAuth 登录成功后自动获取 providers 和 models
+async function handleOAuthSuccess(projectId: string) {
+  try {
+    // 切换到对应的项目
+    if (currentProjectId.value !== projectId) {
+      await projectManager.switchProject(projectId);
+    }
+    
+    // 重新加载项目状态
+    loadProfiles();
+    loadEditorState();
+    
+    // 检查是否有网关配置
+    if (!gatewayConfig.value?.enabled) {
+      return;
+    }
+    
+    // 获取网关 providers
+    const providers = await fetchGatewayProviders(gatewayConfig.value, projectId);
+    
+    if (!providers || providers.length === 0) {
+      return;
+    }
+    
+    // 保存 gatewayProviders 供其他地方使用
+    gatewayProviders.value = providers;
+    
+    // 获取已导入的网关 provider IDs
+    const existingGatewayIds = new Set(
+      providerProfiles.value
+        .filter(p => p.gatewayProviderId)
+        .map(p => p.gatewayProviderId)
+    );
+    
+    // 只导入尚未导入的 providers
+    const newProviders = providers.filter(p => !existingGatewayIds.has(p.id));
+    
+    if (newProviders.length === 0) {
+      // 所有 providers 都已导入，只需刷新模型列表
+      await Promise.all(slots.value.map(slot => refreshModelsForSlot(slot)));
+      return;
+    }
+    
+    // 创建新的 ProviderProfile（追加到现有列表）
+    const newProfiles = newProviders.map(provider => ({
+      ...createProviderFromGateway(provider, gatewayConfig.value!.baseUrl),
+      id: newId(),
+    }));
+    
+    // 追加到现有 providers
+    providerProfiles.value = [...providerProfiles.value, ...newProfiles];
+    saveProfiles();
+    
+    // 如果没有 slot，创建一个
+    if (!slots.value.length) {
+      slots.value = [createSlot()];
+    }
+    
+    // 为第一个 slot 设置默认的 provider
+    if (newProfiles.length > 0 && slots.value.length > 0) {
+      const firstSlot = slots.value[0];
+      firstSlot.providerProfileId = newProfiles[0].id;
+      resolvePluginId(firstSlot);
+    }
+    
+    // 刷新所有 slot 的模型列表
+    await Promise.all(slots.value.map(slot => refreshModelsForSlot(slot)));
+    
+    // 保存编辑器状态
+    saveEditorState();
+  } catch (error) {
+    console.error('自动填充 Providers 失败:', error);
+  }
 }
 
 async function refreshModelsForSlot(slot: Slot) {
@@ -606,14 +723,12 @@ async function refreshModelsForSlot(slot: Slot) {
 async function refreshModelsForSlotWithOptions(slot: Slot, opts: { force?: boolean }) {
   const plugin = getPlugin(slot);
   const cacheKey = getModelsCacheKey(slot);
-  const profile =
-    getProfile(slot) ?? ({ id: '', name: '', apiKey: '', baseUrl: '', pluginId: plugin.id } as ProviderProfile);
+  const profile = getProfile(slot);
 
-  // 调试日志
-  console.log('[refreshModelsForSlot] slot.providerProfileId:', slot.providerProfileId);
-  console.log('[refreshModelsForSlot] profile:', profile);
-  console.log('[refreshModelsForSlot] profile.apiKey:', profile.apiKey ? '***' : '(empty)');
-  console.log('[refreshModelsForSlot] providerProfiles count:', providerProfiles.value.length);
+  // 如果没有找到 profile，跳过
+  if (!profile) {
+    return;
+  }
 
   const modelCacheStore = getModelCacheStore();
 
@@ -631,9 +746,13 @@ async function refreshModelsForSlotWithOptions(slot: Slot, opts: { force?: boole
     }
   }
 
+  // 获取有效的 API Key（网关 Provider 使用 access_token）
+  const effectiveApiKey = getEffectiveApiKey(profile, currentProjectId.value);
+  const effectiveProfile = { ...profile, apiKey: effectiveApiKey };
+
   refreshingModelsBySlotId[slot.id] = true;
   try {
-    const models = await plugin.listModels(profile);
+    const models = await plugin.listModels(effectiveProfile);
     modelsByKey[cacheKey] = models;
     const plainModels = JSON.parse(JSON.stringify(models)) as { id: string; label: string }[];
     await modelCacheStore.setItem(cacheKey, { savedAt: Date.now(), models: plainModels });
@@ -848,8 +967,12 @@ function resolvePluginId(slot: Slot) {
 }
 
 function getPlugin(slot: Slot) {
-  const pluginId = resolvePluginId(slot);
-  return plugins.find((p) => p.id === pluginId)!;
+  const profile = getProfile(slot);
+  
+  // 网关 Provider 使用 openai-compatible 插件
+  // 本地 Provider 使用其配置的 pluginId
+  const pluginId = profile?.pluginId || resolvePluginId(slot);
+  return plugins.find((p) => p.id === pluginId) || plugins[0];
 }
 
 // cURL 导出
@@ -858,7 +981,18 @@ function buildCurlSnippet(slot: Slot): { title: string; code: string } | null {
   const profile = getProfile(slot);
   if (!profile) return null;
   const request = buildRequest(slot);
-  const maskedProfile = useCurlPlaceholder.value ? { ...profile, apiKey: '' } : profile;
+  
+  // 网关 Provider 使用 {{ACCESS_TOKEN}} 占位符
+  // 本地 Provider 根据 useCurlPlaceholder 设置决定是否使用占位符
+  let maskedProfile: typeof profile;
+  if (profile.gatewayProviderId) {
+    // 网关 Provider：始终使用占位符
+    maskedProfile = { ...profile, apiKey: '{{ACCESS_TOKEN}}' };
+  } else {
+    // 本地 Provider：根据设置决定
+    maskedProfile = useCurlPlaceholder.value ? { ...profile, apiKey: '' } : profile;
+  }
+  
   try {
     return {
       title: `cURL（${slot.modelId}）`,
@@ -908,6 +1042,19 @@ async function runSlot(slot: Slot) {
     alert('请选择 Provider Profile');
     return;
   }
+  
+  // 获取有效的 API Key（网关 Provider 使用 access_token，本地 Provider 使用 apiKey）
+  const effectiveApiKey = getEffectiveApiKey(profile, currentProjectId.value);
+  
+  // 检查网关 Provider 是否已登录
+  if (profile.gatewayProviderId && !effectiveApiKey) {
+    alert('网关未登录，请先登录后再运行');
+    return;
+  }
+  
+  // 创建带有有效 apiKey 的 profile 副本
+  const effectiveProfile = { ...profile, apiKey: effectiveApiKey };
+  
   const request = buildRequest(slot);
   const controller = new AbortController();
   abortControllersBySlotId.set(slot.id, controller);
@@ -920,7 +1067,7 @@ async function runSlot(slot: Slot) {
   let firstChunkAt: number | null = null;
   let canceled = false;
   try {
-    for await (const chunk of plugin.invokeChat(profile, request, {
+    for await (const chunk of plugin.invokeChat(effectiveProfile, request, {
       stream: request.stream,
       signal: controller.signal
     })) {
@@ -1183,6 +1330,33 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 
 // 生命周期
 onMounted(async () => {
+  // 检查是否是 OAuth 回调
+  if (window.location.pathname === '/auth/callback') {
+    try {
+      const result = await handleOAuthCallback(window.location.href);
+      if (result.success) {
+        // 清除 URL 中的回调参数，跳转到主页
+        window.history.replaceState({}, '', '/');
+        
+        // 初始化项目管理器（需要先初始化才能获取网关配置）
+        projectManager.initialize();
+        
+        // 自动获取 providers 和 models
+        await handleOAuthSuccess(result.projectId);
+        
+        alert('登录成功！');
+        return; // 提前返回，避免重复初始化
+      } else {
+        alert(`登录失败：${result.error}`);
+        window.history.replaceState({}, '', '/');
+      }
+    } catch (err) {
+      console.error('OAuth callback error:', err);
+      alert(`登录失败：${err instanceof Error ? err.message : '未知错误'}`);
+      window.history.replaceState({}, '', '/');
+    }
+  }
+  
   // 执行数据迁移（如果需要）
   await migrateToProjectNamespace();
   
@@ -1197,6 +1371,14 @@ onMounted(async () => {
   }
   await Promise.all(slots.value.map((slot) => refreshModelsForSlot(slot)));
   await loadHistory();
+  
+  // 检查网关 token 是否需要刷新
+  if (gatewayConfig.value?.enabled) {
+    const needsReauth = await checkAndRefreshTokens(currentProjectId.value, gatewayConfig.value);
+    if (needsReauth) {
+      console.log('网关需要重新登录');
+    }
+  }
   
   window.addEventListener('beforeunload', handleBeforeUnload);
   window.addEventListener('keydown', handleGlobalKeydown);
@@ -1320,13 +1502,19 @@ watch(
       :provider-profiles="providerProfiles"
       :new-profile="newProfile"
       :default-provider-template="defaultProviderTemplate"
+      :current-project-id="currentProjectId"
+      :gateway-config="gatewayConfig"
       :on-reset-new-profile="resetNewProfile"
       :on-add-profile="addProfile"
       :on-remove-profile="requestRemoveProfile"
       :on-export-providers="exportProvidersEncryptedZip"
       :on-import-providers="requestImportProvidersEncryptedZip"
       :on-clear-keys="requestClearProviderApiKeys"
+      :on-save-gateway-config="handleSaveGatewayConfig"
+      :on-disconnect-gateway="handleDisconnectGateway"
+      :on-import-gateway-providers="handleImportGatewayProviders"
       @close="showProviderManager = false"
+      @profile-updated="handleGatewayLogout"
     />
     
     <!-- 历史抽屉 -->

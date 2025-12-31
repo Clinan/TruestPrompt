@@ -38,6 +38,9 @@ importers:
       naive-ui:
         specifier: ^2.43.2
         version: 2.43.2(vue@3.5.25(typescript@5.9.3))
+      oauth4webapi:
+        specifier: ^3.8.3
+        version: 3.8.3
       parse-curl:
         specifier: ^0.2.6
         version: 0.2.6
@@ -2052,6 +2055,9 @@ packages:
 
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
+
+  oauth4webapi@3.8.3:
+    resolution: {integrity: sha512-pQ5BsX3QRTgnt5HxgHwgunIRaDXBdkT23tf8dfzmtTIL2LTpdmxgbpbBm0VgFWAIDlezQvQCTgnVIUmHupXHxw==}
 
   object-inspect@1.13.4:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
@@ -4603,6 +4609,8 @@ snapshots:
   nth-check@2.1.1:
     dependencies:
       boolbase: 1.0.0
+
+  oauth4webapi@3.8.3: {}
 
   object-inspect@1.13.4: {}
 
