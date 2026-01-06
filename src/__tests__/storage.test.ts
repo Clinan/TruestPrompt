@@ -17,7 +17,7 @@ import {
   getItem,
   setItem,
   removeItem,
-} from '../lib/storage';
+} from '../core/storage';
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -78,10 +78,10 @@ describe('StorageService', () => {
           projectIdArb.filter(id => id !== 'default'),
           (projectId1, projectId2) => {
             fc.pre(projectId1 !== projectId2);
-            
+
             const key1 = getNamespacedKey(STORAGE_KEYS.PROFILES, projectId1);
             const key2 = getNamespacedKey(STORAGE_KEYS.PROFILES, projectId2);
-            
+
             expect(key1).not.toBe(key2);
           }
         ),
@@ -113,7 +113,7 @@ describe('StorageService', () => {
         fc.property(projectIdArb, (projectId) => {
           setCurrentProjectId(projectId);
           const key = getNamespacedKey(STORAGE_KEYS.THEME);
-          
+
           // Theme key should be constant regardless of project
           expect(key).toBe('truestprompt-theme');
           // The key format should NOT be `truestprompt-{projectId}-theme`
@@ -130,10 +130,10 @@ describe('StorageService', () => {
         fc.property(projectIdArb, projectIdArb, (projectId1, projectId2) => {
           setCurrentProjectId(projectId1);
           const key1 = getNamespacedKey(STORAGE_KEYS.THEME);
-          
+
           setCurrentProjectId(projectId2);
           const key2 = getNamespacedKey(STORAGE_KEYS.THEME);
-          
+
           expect(key1).toBe(key2);
           expect(key1).toBe('truestprompt-theme');
         }),
@@ -194,19 +194,19 @@ describe('StorageService', () => {
           fc.string(),
           (projectId1, projectId2, value1, value2) => {
             fc.pre(projectId1 !== projectId2);
-            
+
             // Set value for project 1
             setCurrentProjectId(projectId1);
             setItem(STORAGE_KEYS.PROFILES, value1);
-            
+
             // Set value for project 2
             setCurrentProjectId(projectId2);
             setItem(STORAGE_KEYS.PROFILES, value2);
-            
+
             // Verify isolation
             setCurrentProjectId(projectId1);
             expect(getItem(STORAGE_KEYS.PROFILES)).toBe(value1);
-            
+
             setCurrentProjectId(projectId2);
             expect(getItem(STORAGE_KEYS.PROFILES)).toBe(value2);
           }
@@ -220,14 +220,14 @@ describe('StorageService', () => {
       const projectId2 = 'project-b';
       const value1 = 'data-a';
       const value2 = 'data-b';
-      
+
       // Set values for both projects
       setItem(STORAGE_KEYS.PROFILES, value1, projectId1);
       setItem(STORAGE_KEYS.PROFILES, value2, projectId2);
-      
+
       // Remove from project 1
       removeItem(STORAGE_KEYS.PROFILES, projectId1);
-      
+
       // Verify project 1 data is gone, project 2 data remains
       expect(getItem(STORAGE_KEYS.PROFILES, projectId1)).toBeNull();
       expect(getItem(STORAGE_KEYS.PROFILES, projectId2)).toBe(value2);

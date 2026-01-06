@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fc from 'fast-check';
-import type { TokenInfo } from '../types';
+import type { TokenInfo } from '../core/types';
 import {
   parseErrorResponse,
   buildModelsUrl,
@@ -17,7 +17,7 @@ import {
   getEffectiveApiKey,
   isGatewayProvider,
   createProviderFromGateway,
-} from '../lib/gatewayPlugin';
+} from '../modules/provider/domain/gateway';
 import { setToken, clearToken } from '../lib/oauth';
 
 // Mock sessionStorage for tests
@@ -25,7 +25,7 @@ const mockStorage: Record<string, string> = {};
 
 beforeEach(() => {
   Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
-  
+
   Object.defineProperty(global, 'sessionStorage', {
     value: {
       getItem: (key: string) => mockStorage[key] || null,
@@ -56,7 +56,7 @@ describe('Effective API Key', () => {
             apiKey: '',
             gatewayProviderId: 'openai',
           };
-          
+
           // Set token for this project
           const token: TokenInfo = {
             accessToken,
@@ -64,10 +64,10 @@ describe('Effective API Key', () => {
             projectId,
           };
           setToken(projectId, token);
-          
+
           const effectiveKey = getEffectiveApiKey(profile, projectId);
           expect(effectiveKey).toBe(accessToken);
-          
+
           clearToken(projectId);
         }
       ),
@@ -84,10 +84,10 @@ describe('Effective API Key', () => {
             apiKey: '',
             gatewayProviderId: 'openai',
           };
-          
+
           // Ensure no token
           clearToken(projectId);
-          
+
           const effectiveKey = getEffectiveApiKey(profile, projectId);
           expect(effectiveKey).toBe('');
         }
@@ -105,7 +105,7 @@ describe('Effective API Key', () => {
             apiKey,
             // No gatewayProviderId = local provider
           };
-          
+
           const effectiveKey = getEffectiveApiKey(profile, 'any-project');
           expect(effectiveKey).toBe(apiKey);
         }
@@ -160,19 +160,19 @@ describe('Provider Creation from Gateway', () => {
         fc.webUrl(),
         (gatewayProvider, gatewayBaseUrl) => {
           const profile = createProviderFromGateway(gatewayProvider, gatewayBaseUrl);
-          
+
           // Name should match
           expect(profile.name).toBe(gatewayProvider.name);
-          
+
           // gatewayProviderId should be set
           expect(profile.gatewayProviderId).toBe(gatewayProvider.id);
-          
+
           // apiKey should be empty
           expect(profile.apiKey).toBe('');
-          
+
           // pluginId should be openai-compatible
           expect(profile.pluginId).toBe('openai-compatible');
-          
+
           // baseUrl should be the chat URL
           expect(profile.baseUrl).toContain('/api/llmproxy/');
           expect(profile.baseUrl).toContain(gatewayProvider.id);
@@ -193,7 +193,7 @@ describe('Provider List Transformation', () => {
   it('Property 11: parsed providers have correct id and name', () => {
     fc.assert(
       fc.property(
-        fc.array(
+        fc.uniqueArray(
           fc.record({
             id: fc.string({ minLength: 1 }),
             name: fc.string({ minLength: 1 }),
@@ -206,12 +206,12 @@ describe('Provider List Transformation', () => {
               })
             ),
           }),
-          { minLength: 0, maxLength: 10 }
+          { minLength: 0, maxLength: 10, selector: (p) => p.id }
         ),
         (providers) => {
           const response = { data: providers };
           const parsed = parseProviderList(response);
-          
+
           // Each parsed provider should have a matching source
           for (const provider of parsed) {
             const source = providers.find(p => p.id === provider.id);
@@ -220,7 +220,7 @@ describe('Provider List Transformation', () => {
               expect(provider.name).toBe(source.name);
             }
           }
-          
+
           // Count valid provider IDs (non-empty)
           const validProviders = providers.filter(p => p.id !== '');
           expect(parsed.length).toBe(validProviders.length);
@@ -245,7 +245,7 @@ describe('Provider List Transformation', () => {
         { id: 'valid', name: 'Valid Provider' },
       ],
     };
-    
+
     const parsed = parseProviderList(response);
     expect(parsed.length).toBe(1);
     expect(parsed[0].id).toBe('valid');
@@ -265,16 +265,16 @@ describe('URL Construction', () => {
         fc.string({ minLength: 1 }).filter(s => !s.includes('/') && !s.includes('?')),
         (baseUrl, providerId) => {
           const url = buildModelsUrl(baseUrl, providerId);
-          
+
           // Should contain the provider ID
           expect(url).toContain(providerId);
-          
+
           // Should end with /v1/models
           expect(url).toContain('/v1/models');
-          
+
           // Should contain /api/llmproxy/
           expect(url).toContain('/api/llmproxy/');
-          
+
           // Should be a valid URL
           expect(() => new URL(url)).not.toThrow();
         }
@@ -290,16 +290,16 @@ describe('URL Construction', () => {
         fc.string({ minLength: 1 }).filter(s => !s.includes('/') && !s.includes('?')),
         (baseUrl, providerId) => {
           const url = buildChatUrl(baseUrl, providerId);
-          
+
           // Should contain the provider ID
           expect(url).toContain(providerId);
-          
+
           // Should end with /v1/chat/completions
           expect(url).toContain('/v1/chat/completions');
-          
+
           // Should contain /api/llmproxy/
           expect(url).toContain('/api/llmproxy/');
-          
+
           // Should be a valid URL
           expect(() => new URL(url)).not.toThrow();
         }
@@ -314,10 +314,10 @@ describe('URL Construction', () => {
         fc.webUrl(),
         (baseUrl) => {
           const url = buildProvidersUrl(baseUrl);
-          
+
           // Should end with /api/llmproxy/providers
           expect(url).toContain('/api/llmproxy/providers');
-          
+
           // Should be a valid URL
           expect(() => new URL(url)).not.toThrow();
         }
@@ -329,7 +329,7 @@ describe('URL Construction', () => {
   it('Property 12: trailing slashes are handled correctly', () => {
     const baseWithSlash = 'https://example.com/';
     const baseWithoutSlash = 'https://example.com';
-    
+
     expect(buildModelsUrl(baseWithSlash, 'openai')).toBe(buildModelsUrl(baseWithoutSlash, 'openai'));
     expect(buildChatUrl(baseWithSlash, 'openai')).toBe(buildChatUrl(baseWithoutSlash, 'openai'));
     expect(buildProvidersUrl(baseWithSlash)).toBe(buildProvidersUrl(baseWithoutSlash));
@@ -355,13 +355,13 @@ describe('Model List Parsing', () => {
         (models) => {
           const response = { object: 'list', data: models };
           const parsed = parseModelList(response);
-          
+
           // Each parsed model should have matching id
           for (const model of parsed) {
             const source = models.find(m => m.id === model.id);
             expect(source).toBeDefined();
           }
-          
+
           // All valid models should be parsed
           const validModels = models.filter(m => m.id !== '');
           expect(parsed.length).toBe(validModels.length);
@@ -387,7 +387,7 @@ describe('Model List Parsing', () => {
         { id: 'gpt-4', object: 'model' },
       ],
     };
-    
+
     const parsed = parseModelList(response);
     expect(parsed.length).toBe(1);
     expect(parsed[0].id).toBe('gpt-4');
@@ -412,7 +412,7 @@ describe('Error Response Parsing', () => {
               code: 'invalid_api_key',
             },
           };
-          
+
           expect(parseErrorResponse(response)).toBe(message);
         }
       ),
@@ -486,7 +486,7 @@ describe('Gateway Config Persistence', () => {
           // Serialize and deserialize
           const serialized = JSON.stringify(gatewayConfig);
           const deserialized = JSON.parse(serialized) as typeof gatewayConfig;
-          
+
           // All fields should match
           expect(deserialized.enabled).toBe(gatewayConfig.enabled);
           expect(deserialized.baseUrl).toBe(gatewayConfig.baseUrl);

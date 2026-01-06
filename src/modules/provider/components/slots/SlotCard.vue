@@ -25,12 +25,12 @@ import {
   ReloadOutlined,
   SettingOutlined
 } from '@ant-design/icons-vue';
-import type { ProviderProfile, Slot, SharedState, PluginRequest } from '../../types';
+import type { ProviderProfile, Slot, SharedState, PluginRequest } from '../../../../core/types';
 import OutputBubble from './OutputBubble.vue';
-import JsonEditor from '../JsonEditor.vue';
+import JsonEditor from '../../../../components/JsonEditor.vue';
 import ParamsModal from '../modals/ParamsModal.vue';
 import CurlModal from '../modals/CurlModal.vue';
-import { plugins } from '../../lib/plugins';
+import { plugins } from '../../domain/plugins';
 
 const props = defineProps<{
   slot: Slot;

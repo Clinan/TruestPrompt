@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { parseToolsDefinition } from '../lib/tools';
+import { parseToolsDefinition } from '../modules/provider/domain/tools';
 
 // Tools validation functions (extracted from ToolsModal.vue logic)
 function isValidToolsDefinition(value: string): boolean {
@@ -59,7 +59,7 @@ describe('Tools JSON Validation (Property 13)', () => {
       '{key: "no quotes on key"}',
       "{'single': 'quotes'}"
     ];
-    
+
     invalidJsonExamples.forEach(invalid => {
       expect(isValidToolsDefinition(invalid)).toBe(false);
     });
@@ -98,13 +98,13 @@ describe('JSON Format Idempotence (Property 14)', () => {
         fc.json(),
         (jsonValue) => {
           const jsonString = JSON.stringify(jsonValue);
-          
+
           // Format once
           const formatted1 = formatJson(jsonString);
-          
+
           // Format again
           const formatted2 = formatJson(formatted1);
-          
+
           // Should be identical (idempotent)
           expect(formatted2).toBe(formatted1);
         }
@@ -120,11 +120,11 @@ describe('JSON Format Idempotence (Property 14)', () => {
       "a": 1,
       "b": 2
     }`;
-    
+
     const formatted1 = formatJson(compact);
     const formatted2 = formatJson(spaced);
     const formatted3 = formatJson(multiline);
-    
+
     expect(formatted1).toBe(formatted2);
     expect(formatted2).toBe(formatted3);
   });
@@ -175,7 +175,7 @@ describe('Invalid Tools JSON Prevents Save (Property 15)', () => {
         }
       }
     ]);
-    
+
     expect(canSaveTools(validTools)).toBe(true);
   });
 });

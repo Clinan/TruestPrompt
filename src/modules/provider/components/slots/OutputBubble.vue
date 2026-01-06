@@ -17,8 +17,8 @@ import {
   DownOutlined,
   RightOutlined
 } from '@ant-design/icons-vue';
-import type { SlotMetrics, ToolCall } from '../../types';
-import JsonEditor from '../JsonEditor.vue';
+import type { SlotMetrics, ToolCall } from '../../../../core/types';
+import JsonEditor from '../../../../components/JsonEditor.vue';
 
 const props = defineProps<{
   output: string;

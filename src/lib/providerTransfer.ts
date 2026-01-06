@@ -1,5 +1,5 @@
-import type { ProviderProfile } from '../types';
-import { decryptBytes, encryptBytes, unzipSingleFile, zipSingleFile } from './secureZip';
+import type { ProviderProfile } from '../core/types';
+import { decryptBytes, encryptBytes, unzipSingleFile, zipSingleFile } from '../core/utils/secureZip';
 
 export async function buildProvidersExportZip(providers: ProviderProfile[], password: string) {
   const json = JSON.stringify(providers, null, 2);

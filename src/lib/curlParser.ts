@@ -10,7 +10,7 @@
  */
 
 import parseCurlLib from 'parse-curl';
-import type { ProviderProfile, Slot } from '../types';
+import type { ProviderProfile, Slot } from '../core/types';
 
 // ============================================================================
 // Type Definitions
@@ -112,7 +112,7 @@ export function parseCurl(curlCommand: string): ParsedCurl {
   try {
     // 使用 parse-curl 解析
     const parsed = parseCurlLib(trimmed);
-    
+
     // 提取 URL
     const url = parsed.url;
     if (!url) {
@@ -206,17 +206,17 @@ export function extractApiKey(headers: Record<string, string>): string | null {
   const authKey = Object.keys(headers).find(
     key => key.toLowerCase() === 'authorization'
   );
-  
+
   if (!authKey) {
     return null;
   }
 
   const authValue = headers[authKey];
-  
+
   if (authValue.toLowerCase().startsWith('bearer ')) {
     return authValue.slice(7).trim();
   }
-  
+
   return authValue.trim() || null;
 }
 
@@ -235,19 +235,19 @@ export function extractModelAndMessages(body: unknown): ExtractedMessages {
 
   const bodyObj = body as Record<string, unknown>;
   const modelId = typeof bodyObj.model === 'string' ? bodyObj.model : null;
-  
+
   let messages: Array<{ role: string; content: string }> | null = null;
   let systemPrompt: string | null = null;
-  
+
   if (Array.isArray(bodyObj.messages)) {
     const allMessages: Array<{ role: string; content: string }> = [];
-    
+
     for (const msg of bodyObj.messages) {
       if (msg && typeof msg === 'object') {
         const msgObj = msg as Record<string, unknown>;
         const role = typeof msgObj.role === 'string' ? msgObj.role : 'user';
         const content = typeof msgObj.content === 'string' ? msgObj.content : '';
-        
+
         if (role === 'system') {
           systemPrompt = content;
         } else {
@@ -255,12 +255,12 @@ export function extractModelAndMessages(body: unknown): ExtractedMessages {
         }
       }
     }
-    
+
     if (allMessages.length > 0) {
       messages = allMessages;
     }
   }
-  
+
   return { modelId, messages, systemPrompt };
 }
 
@@ -299,14 +299,14 @@ export function generateUniqueProviderName(
   if (!existingNames.includes(baseName)) {
     return baseName;
   }
-  
+
   const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
   const newName = `${baseName}-${suffix}`;
-  
+
   if (existingNames.includes(newName)) {
     return generateUniqueProviderName(existingNames, baseName);
   }
-  
+
   return newName;
 }
 
@@ -322,14 +322,14 @@ export function isSlotDefault(slot: Slot): boolean {
   if (slot.status !== 'idle') {
     return false;
   }
-  
+
   if (slot.output && slot.output.trim()) {
     return false;
   }
-  
+
   const systemPrompt = slot.systemPrompt?.trim() || '';
   const isDefaultPrompt = systemPrompt === '' || systemPrompt === DEFAULT_SYSTEM_PROMPT;
-  
+
   return isDefaultPrompt;
 }
 
@@ -340,6 +340,6 @@ export function shouldOverwriteSlot(slots: Slot[]): boolean {
   if (slots.length !== 1) {
     return false;
   }
-  
+
   return isSlotDefault(slots[0]);
 }

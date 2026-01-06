@@ -2,7 +2,7 @@
 import { ref, watch, nextTick } from 'vue';
 import { Modal, Button, Space, Input, Table, message } from 'ant-design-vue';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue';
-import { newId } from '../../lib/id';
+import { newId } from '../../core/utils/id';
 
 interface Variable {
   id: string;

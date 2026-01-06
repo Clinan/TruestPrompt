@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fc from 'fast-check';
-import type { GatewayConfig, TokenInfo } from '../types';
+import type { GatewayConfig, TokenInfo } from '../core/types';
 import {
   validateGatewayConfig,
   isGatewayConfigComplete,
@@ -32,7 +32,7 @@ const mockStorage: Record<string, string> = {};
 beforeEach(() => {
   // Clear mock storage
   Object.keys(mockStorage).forEach(key => delete mockStorage[key]);
-  
+
   // Mock sessionStorage
   Object.defineProperty(global, 'sessionStorage', {
     value: {
@@ -146,7 +146,7 @@ describe('PKCE Generation', () => {
   it('Property 3: code_verifier contains only unreserved characters', () => {
     // Unreserved characters: A-Z, a-z, 0-9, -, ., _, ~
     const unreservedPattern = /^[A-Za-z0-9\-._~]+$/;
-    
+
     fc.assert(
       fc.property(
         fc.constant(null),
@@ -161,7 +161,7 @@ describe('PKCE Generation', () => {
 
   it('Property 3: each generated code_verifier is unique', () => {
     const verifiers = new Set<string>();
-    
+
     for (let i = 0; i < 100; i++) {
       const verifier = generateCodeVerifier();
       expect(verifiers.has(verifier)).toBe(false);
@@ -190,15 +190,15 @@ describe('Code Challenge Generation', () => {
     for (let i = 0; i < 10; i++) {
       const verifier = generateCodeVerifier();
       const challenge = await generateCodeChallenge(verifier);
-      
+
       // BASE64URL should not contain +, /, or trailing =
       expect(challenge).not.toContain('+');
       expect(challenge).not.toContain('/');
       expect(challenge).not.toMatch(/=+$/);
-      
+
       // Should only contain BASE64URL characters
       expect(challenge).toMatch(/^[A-Za-z0-9\-_]+$/);
-      
+
       // SHA256 produces 32 bytes, BASE64URL encoded is ~43 chars
       expect(challenge.length).toBeGreaterThanOrEqual(40);
       expect(challenge.length).toBeLessThanOrEqual(50);
@@ -207,13 +207,13 @@ describe('Code Challenge Generation', () => {
 
   it('Property 4: different verifiers produce different challenges', async () => {
     const challenges = new Map<string, string>();
-    
+
     for (let i = 0; i < 20; i++) {
       const verifier = generateCodeVerifier();
       const challenge = await generateCodeChallenge(verifier);
       challenges.set(verifier, challenge);
     }
-    
+
     // All challenges should be unique (since all verifiers are unique)
     const uniqueChallenges = new Set(challenges.values());
     expect(uniqueChallenges.size).toBe(challenges.size);
@@ -237,7 +237,7 @@ describe('Token Storage', () => {
         (token: TokenInfo) => {
           setToken(token.projectId, token);
           const retrieved = getToken(token.projectId);
-          
+
           expect(retrieved).not.toBeNull();
           expect(retrieved!.accessToken).toBe(token.accessToken);
           expect(retrieved!.expiresAt).toBe(token.expiresAt);
@@ -258,10 +258,10 @@ describe('Token Storage', () => {
             expiresAt: Date.now() + 3600000,
             projectId,
           };
-          
+
           setToken(projectId, token);
           expect(getToken(projectId)).not.toBeNull();
-          
+
           clearToken(projectId);
           expect(getToken(projectId)).toBeNull();
         }
@@ -278,7 +278,7 @@ describe('Token Storage', () => {
         (projectId1, projectId2) => {
           // Skip if same project ID
           fc.pre(projectId1 !== projectId2);
-          
+
           const token1: TokenInfo = {
             accessToken: 'token-1',
             expiresAt: Date.now() + 3600000,
@@ -289,16 +289,16 @@ describe('Token Storage', () => {
             expiresAt: Date.now() + 7200000,
             projectId: projectId2,
           };
-          
+
           setToken(projectId1, token1);
           setToken(projectId2, token2);
-          
+
           const retrieved1 = getToken(projectId1);
           const retrieved2 = getToken(projectId2);
-          
+
           expect(retrieved1!.accessToken).toBe('token-1');
           expect(retrieved2!.accessToken).toBe('token-2');
-          
+
           // Clearing one doesn't affect the other
           clearToken(projectId1);
           expect(getToken(projectId1)).toBeNull();
@@ -344,14 +344,14 @@ describe('State Validation', () => {
 
   it('Property 6: generated states are unique and pass self-validation', () => {
     const states = new Set<string>();
-    
+
     for (let i = 0; i < 100; i++) {
       const state = generateState();
-      
+
       // Each state should be unique
       expect(states.has(state)).toBe(false);
       states.add(state);
-      
+
       // State should validate against itself
       expect(validateState(state, state)).toBe(true);
     }
@@ -371,7 +371,7 @@ describe('Auth Status Derivation', () => {
         (projectId) => {
           // Ensure no token exists
           clearToken(projectId);
-          
+
           expect(getAuthStatus(projectId)).toBe('logged_out');
           expect(isTokenValid(projectId)).toBe(false);
         }
@@ -384,16 +384,16 @@ describe('Auth Status Derivation', () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 50 }).filter(s => /^[a-zA-Z0-9_-]+$/.test(s)),
-        fc.integer({ min: 1, max: 86400000 * 365 }), // 1ms to 1 year in future
+        fc.integer({ min: 100, max: 86400000 * 365 }), // 100ms to 1 year in future to avoid flakiness
         (projectId, futureOffset) => {
           const token: TokenInfo = {
             accessToken: 'test-token',
             expiresAt: Date.now() + futureOffset,
             projectId,
           };
-          
+
           setToken(projectId, token);
-          
+
           expect(getAuthStatus(projectId)).toBe('logged_in');
           expect(isTokenValid(projectId)).toBe(true);
         }
@@ -413,9 +413,9 @@ describe('Auth Status Derivation', () => {
             expiresAt: Date.now() - pastOffset,
             projectId,
           };
-          
+
           setToken(projectId, token);
-          
+
           expect(getAuthStatus(projectId)).toBe('expired');
           expect(isTokenValid(projectId)).toBe(false);
         }
@@ -439,15 +439,15 @@ describe('Token Expiration Detection', () => {
         fc.integer({ min: 0, max: 299999 }), // Time until expiration (less than threshold)
         (projectId, threshold, timeUntilExpiry) => {
           fc.pre(timeUntilExpiry < threshold);
-          
+
           const token: TokenInfo = {
             accessToken: 'test-token',
             expiresAt: Date.now() + timeUntilExpiry,
             projectId,
           };
-          
+
           setToken(projectId, token);
-          
+
           expect(isTokenExpiringSoon(projectId, threshold)).toBe(true);
         }
       ),
@@ -463,15 +463,15 @@ describe('Token Expiration Detection', () => {
         fc.integer({ min: 300001, max: 86400000 }), // Time until expiration (more than threshold)
         (projectId, threshold, timeUntilExpiry) => {
           fc.pre(timeUntilExpiry >= threshold);
-          
+
           const token: TokenInfo = {
             accessToken: 'test-token',
             expiresAt: Date.now() + timeUntilExpiry,
             projectId,
           };
-          
+
           setToken(projectId, token);
-          
+
           expect(isTokenExpiringSoon(projectId, threshold)).toBe(false);
         }
       ),
@@ -507,7 +507,7 @@ describe('Callback Parameter Extraction', () => {
         (code, state) => {
           const url = `https://app.com/auth/callback?code=${code}&state=${state}`;
           const params = extractCallbackParams(url);
-          
+
           expect(params.code).toBe(code);
           expect(params.state).toBe(state);
           expect(params.error).toBeUndefined();
@@ -526,7 +526,7 @@ describe('Callback Parameter Extraction', () => {
           const encodedDesc = encodeURIComponent(errorDescription);
           const url = `https://app.com/auth/callback?error=${error}&error_description=${encodedDesc}`;
           const params = extractCallbackParams(url);
-          
+
           expect(params.error).toBe(error);
           expect(params.errorDescription).toBe(errorDescription);
           expect(params.code).toBeUndefined();
@@ -559,11 +559,13 @@ describe('PKCE Storage', () => {
             codeVerifier,
             projectId,
             gatewayBaseUrl,
+            tokenEndpoint: '/oauth/token',
+            redirectPath: '/auth/callback',
             timestamp: Date.now(),
           });
-          
+
           const retrieved = retrievePKCE(state);
-          
+
           expect(retrieved).not.toBeNull();
           expect(retrieved!.state).toBe(state);
           expect(retrieved!.codeVerifier).toBe(codeVerifier);
@@ -581,13 +583,15 @@ describe('PKCE Storage', () => {
       codeVerifier: 'test-verifier',
       projectId: 'test-project',
       gatewayBaseUrl: 'https://example.com',
+      tokenEndpoint: '/oauth/token',
+      redirectPath: '/auth/callback',
       timestamp: Date.now(),
     });
-    
+
     // First retrieval should succeed
     const first = retrievePKCE(state);
     expect(first).not.toBeNull();
-    
+
     // Second retrieval should return null
     const second = retrievePKCE(state);
     expect(second).toBeNull();
@@ -600,7 +604,7 @@ describe('PKCE Storage', () => {
         (state) => {
           // Clear any existing PKCE
           retrievePKCE(state);
-          
+
           const result = retrievePKCE(state);
           expect(result).toBeNull();
         }

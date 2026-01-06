@@ -10,7 +10,7 @@
 import { ref, computed, watch } from 'vue';
 import { Modal, Button, Space, Input, Select, Checkbox, Alert, message } from 'ant-design-vue';
 import { ImportOutlined, PlusOutlined } from '@ant-design/icons-vue';
-import type { ProjectMetadata, ProviderProfile } from '../../types';
+import type { ProjectMetadata, ProviderProfile } from '../../../../core/types';
 import {
   parseCurl,
   detectPluginId,
@@ -19,8 +19,8 @@ import {
   findMatchingProvider,
   generateUniqueProviderName,
   CurlParseError,
-} from '../../lib/curlParser';
-import { newId } from '../../lib/id';
+} from '../../../../lib/curlParser';
+import { newId } from '../../../../core/utils/id';
 
 const { TextArea } = Input;
 

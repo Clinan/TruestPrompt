@@ -6,7 +6,7 @@
 import { ref, watch, computed } from 'vue';
 import { Modal, Form, InputNumber, Switch, Button, Tooltip, Divider } from 'ant-design-vue';
 import { InfoCircleOutlined, UndoOutlined, BulbOutlined } from '@ant-design/icons-vue';
-import type { SharedState, ThinkingConfig } from '../../types';
+import type { SharedState, ThinkingConfig } from '../../../../core/types';
 
 const props = defineProps<{
   open: boolean;

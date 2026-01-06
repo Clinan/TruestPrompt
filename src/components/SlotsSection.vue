@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Button } from 'ant-design-vue';
-import type { ProviderProfile, Slot, SharedState } from '../types';
+import type { ProviderProfile, Slot, SharedState } from '../core/types';
 import SlotCard from './SlotCard.vue';
 
 const props = defineProps<{

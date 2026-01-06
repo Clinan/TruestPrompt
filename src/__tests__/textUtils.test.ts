@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasMeaningfulContent } from '../lib/textUtils';
+import { hasMeaningfulContent } from '../core/utils/textUtils';
 
 describe('hasMeaningfulContent', () => {
   describe('返回 false（无意义内容）', () => {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Button, Modal, Space } from 'ant-design-vue';
-import type { SharedState } from '../types';
-import { newId } from '../lib/id';
+import type { SharedState } from '../core/types';
+import { newId } from '../core/utils/id';
 import JsonEditor from './JsonEditor.vue';
 
 const props = defineProps<{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { SharedState, UserPromptPreset } from '../types';
-import { newId } from '../lib/id';
+import type { SharedState, UserPromptPreset } from '../core/types';
+import { newId } from '../core/utils/id';
 import JsonEditor from './JsonEditor.vue';
 
 const props = defineProps<{

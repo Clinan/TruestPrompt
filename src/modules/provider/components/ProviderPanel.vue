@@ -19,10 +19,10 @@ import {
   Upload,
 } from 'ant-design-vue';
 import type { UploadProps } from 'ant-design-vue';
-import type { Plugin, ProviderProfile, ProviderProfileDraft, GatewayConfig, GatewayProvider } from '../types';
-import { getAuthStatus, startOAuthLogin, logout, DEFAULT_AUTHORIZE_ENDPOINT, DEFAULT_TOKEN_ENDPOINT, DEFAULT_REDIRECT_PATH } from '../lib/oauth';
-import { fetchGatewayProviders, createProviderFromGateway } from '../lib/gatewayPlugin';
-import { newId } from '../lib/id';
+import type { Plugin, ProviderProfile, ProviderProfileDraft, GatewayConfig, GatewayProvider } from '../../../core/types';
+import { getAuthStatus, startOAuthLogin, logout, DEFAULT_AUTHORIZE_ENDPOINT, DEFAULT_TOKEN_ENDPOINT, DEFAULT_REDIRECT_PATH } from '../../../lib/oauth';
+import { fetchGatewayProviders, createProviderFromGateway } from '../domain/gateway';
+import { newId } from '../../../core/utils/id';
 
 const { Password: InputPassword } = Input;
 const { Title: TypographyTitle, Text: TypographyText } = Typography;

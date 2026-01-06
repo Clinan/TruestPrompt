@@ -7,7 +7,7 @@
  */
 import { computed } from 'vue';
 import { TransitionGroup } from 'vue';
-import type { ProviderProfile, Slot, SharedState, PluginRequest } from '../../types';
+import type { ProviderProfile, Slot, SharedState, PluginRequest } from '../../../../core/types';
 import SlotCard from './SlotCard.vue';
 
 const props = defineProps<{

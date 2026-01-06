@@ -19,7 +19,7 @@ import {
   PLUGIN_URL_PATTERNS,
   DEFAULT_SYSTEM_PROMPT,
 } from '../lib/curlParser';
-import type { ProviderProfile, Slot } from '../types';
+import type { ProviderProfile, Slot } from '../core/types';
 
 // ============================================================================
 // Test Generators
@@ -91,7 +91,7 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
       'https://example.com/api',
       'http://localhost:3000/test',
     ];
-    
+
     for (const url of testUrls) {
       const curlCmd = `curl ${url}`;
       const result = parseCurl(curlCmd);
@@ -105,7 +105,7 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
       { name: 'Authorization', value: 'Bearer sk-test123' },
       { name: 'X-Custom-Header', value: 'custom-value' },
     ];
-    
+
     for (const { name, value } of testCases) {
       const curlCmd = `curl -H "${name}: ${value}" https://api.example.com`;
       const result = parseCurl(curlCmd);
@@ -119,7 +119,7 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
       { key: 'value', number: 123 },
       { nested: { a: 1, b: 2 } },
     ];
-    
+
     for (const body of testBodies) {
       const bodyStr = JSON.stringify(body);
       const curlCmd = `curl -d '${bodyStr}' https://api.example.com`;
@@ -131,7 +131,7 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
   it('should parse standard OpenAI cURL command', () => {
     const curlCmd = `curl -H "Content-Type: application/json" -H "Authorization: Bearer sk-test123" -d '{"model":"gpt-4","messages":[{"role":"user","content":"hello"}]}' https://api.openai.com/v1/chat/completions`;
     const result = parseCurl(curlCmd);
-    
+
     expect(result.url).toBe('https://api.openai.com/v1/chat/completions');
     expect(result.headers['Content-Type']).toBe('application/json');
     expect(result.apiKey).toBe('sk-test123');
@@ -144,7 +144,7 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
   it('should handle multiple headers', () => {
     const curlCmd = `curl -H "Content-Type: application/json" -H "Authorization: Bearer key123" -H "X-Request-Id: abc" https://api.example.com`;
     const result = parseCurl(curlCmd);
-    
+
     expect(result.headers['Content-Type']).toBe('application/json');
     expect(result.headers['Authorization']).toBe('Bearer key123');
     expect(result.headers['X-Request-Id']).toBe('abc');
@@ -173,9 +173,9 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
 --header 'Content-Type: application/json' \\
 --header 'Authorization: Bearer 1232462421' \\
 --data '{"model": "doubao-seed-1-6-thinking-250715","messages": [{"role": "system","content": "You are a helpful assistant."},{"role": "user","content": "Hello!"}]}'`;
-    
+
     const result = parseCurl(curlCmd);
-    
+
     expect(result.url).toBe('https://ark.cn-beijing.volces.com/api/v1/chat/completions');
     expect(result.headers['Content-Type']).toBe('application/json');
     expect(result.apiKey).toBe('1232462421');
@@ -186,10 +186,10 @@ describe('Property 1: cURL Parsing Extracts All Required Fields', () => {
         { role: 'user', content: 'Hello!' }
       ]
     });
-    
+
     // 验证插件检测
     expect(detectPluginId(result.url)).toBe('ark-bytedance');
-    
+
     // 验证消息提取
     const extracted = extractModelAndMessages(result.body);
     expect(extracted.modelId).toBe('doubao-seed-1-6-thinking-250715');
@@ -235,7 +235,7 @@ describe('Property 8: Error Handling for Invalid Inputs', () => {
       'curl -d \'{"test": true}\'',
       'curl -X POST',
     ];
-    
+
     for (const cmd of invalidCommands) {
       expect(() => parseCurl(cmd)).toThrow(CurlParseError);
       expect(() => parseCurl(cmd)).toThrow('未找到有效的请求 URL');
@@ -389,7 +389,7 @@ describe('Property 9: Message Separation by Role', () => {
           ];
           const body = { messages };
           const result = extractModelAndMessages(body);
-          
+
           expect(result.systemPrompt).toBe(systemContent);
         }
       ),
@@ -404,7 +404,7 @@ describe('Property 9: Message Separation by Role', () => {
         (userMessages) => {
           const body = { messages: userMessages };
           const result = extractModelAndMessages(body);
-          
+
           expect(result.messages).toHaveLength(userMessages.length);
           result.messages?.forEach((msg, i) => {
             expect(msg.role).toBe(userMessages[i].role);
@@ -425,9 +425,9 @@ describe('Property 9: Message Separation by Role', () => {
         { role: 'user', content: 'How are you?' },
       ]
     };
-    
+
     const result = extractModelAndMessages(body);
-    
+
     expect(result.systemPrompt).toBe('You are helpful');
     expect(result.messages).toHaveLength(3);
     expect(result.messages?.[0]).toEqual({ role: 'user', content: 'Hello' });
@@ -451,14 +451,14 @@ describe('Property 4: Provider Matching by BaseUrl, PluginId and ApiKey', () => 
         (providers, indexSeed) => {
           const index = indexSeed % providers.length;
           const target = providers[index];
-          
+
           const result = findMatchingProvider(
             providers as ProviderProfile[],
             target.baseUrl,
             target.pluginId,
             target.apiKey
           );
-          
+
           expect(result).not.toBeNull();
           expect(result?.baseUrl).toBe(target.baseUrl);
           expect(result?.pluginId).toBe(target.pluginId);
@@ -477,7 +477,7 @@ describe('Property 4: Provider Matching by BaseUrl, PluginId and ApiKey', () => 
       baseUrl: 'https://api.openai.com/v1/chat/completions',
       pluginId: 'openai-compatible',
     };
-    
+
     // 不同的 apiKey 应该返回 null
     const result = findMatchingProvider(
       [provider],
@@ -485,7 +485,7 @@ describe('Property 4: Provider Matching by BaseUrl, PluginId and ApiKey', () => 
       provider.pluginId,
       'sk-different-key'
     );
-    
+
     expect(result).toBeNull();
   });
 
@@ -497,14 +497,14 @@ describe('Property 4: Provider Matching by BaseUrl, PluginId and ApiKey', () => 
       baseUrl: 'https://api.openai.com/v1/chat/completions',
       pluginId: 'openai-compatible',
     };
-    
+
     // 不提供 apiKey 时，只匹配 baseUrl 和 pluginId
     const result = findMatchingProvider(
       [provider],
       provider.baseUrl,
       provider.pluginId
     );
-    
+
     expect(result).not.toBeNull();
     expect(result?.id).toBe(provider.id);
   });
@@ -521,14 +521,14 @@ describe('Property 4: Provider Matching by BaseUrl, PluginId and ApiKey', () => 
           const filteredProviders = providers.filter(
             p => !(p.baseUrl === baseUrl && p.pluginId === pluginId && p.apiKey === apiKey)
           );
-          
+
           const result = findMatchingProvider(
             filteredProviders as ProviderProfile[],
             baseUrl,
             pluginId,
             apiKey
           );
-          
+
           expect(result).toBeNull();
         }
       ),
@@ -552,7 +552,7 @@ describe('Property 5: Provider Creation with Unique Names', () => {
         (existingNames, baseName) => {
           // 确保 baseName 不在 existingNames 中
           const filteredNames = existingNames.filter(n => n !== baseName);
-          
+
           const result = generateUniqueProviderName(filteredNames, baseName);
           expect(result).toBe(baseName);
         }
@@ -567,9 +567,9 @@ describe('Property 5: Provider Creation with Unique Names', () => {
         fc.string({ minLength: 1, maxLength: 20 }),
         (baseName) => {
           const existingNames = [baseName];
-          
+
           const result = generateUniqueProviderName(existingNames, baseName);
-          
+
           expect(result).not.toBe(baseName);
           expect(result.startsWith(baseName)).toBe(true);
           expect(existingNames).not.toContain(result);
@@ -598,6 +598,7 @@ describe('Property 6: Slot Overwrite vs Create Decision', () => {
       selected: true,
       status: 'idle',
       output: '',
+      thinking: '',
       toolCalls: null,
       metrics: { ttfbMs: null, totalMs: null },
     };
@@ -624,6 +625,7 @@ describe('Property 6: Slot Overwrite vs Create Decision', () => {
             selected: true,
             status: 'idle',
             output: '',
+            thinking: '',
             toolCalls: null,
             metrics: { ttfbMs: null, totalMs: null },
           };
@@ -659,6 +661,7 @@ describe('Property 6: Slot Overwrite vs Create Decision', () => {
       selected: true,
       status: 'idle',
       output: 'Some output text',
+      thinking: '',
       toolCalls: null,
       metrics: { ttfbMs: null, totalMs: null },
     };
@@ -678,6 +681,7 @@ describe('Property 6: Slot Overwrite vs Create Decision', () => {
       selected: true,
       status: 'running',
       output: '',
+      thinking: '',
       toolCalls: null,
       metrics: { ttfbMs: null, totalMs: null },
     };

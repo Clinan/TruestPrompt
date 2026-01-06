@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import type { ImageContent, UserPromptPreset } from '../types';
+import type { ImageContent, UserPromptPreset } from '../core/types';
 
 // Helper to generate unique IDs
 let idCounter = 0;
@@ -70,15 +70,15 @@ describe('Image Utils Property Tests', () => {
         fc.property(userPromptPresetArb, (preset) => {
           const serialized = JSON.stringify(preset);
           const deserialized = JSON.parse(serialized) as UserPromptPreset;
-          
+
           expect(deserialized.id).toBe(preset.id);
           expect(deserialized.role).toBe(preset.role);
           expect(deserialized.text).toBe(preset.text);
-          
+
           if (preset.images) {
             expect(deserialized.images).toBeDefined();
             expect(deserialized.images?.length).toBe(preset.images.length);
-            
+
             preset.images.forEach((img, i) => {
               const deserializedImg = deserialized.images![i];
               expect(deserializedImg.id).toBe(img.id);
@@ -101,9 +101,9 @@ describe('Image Utils Property Tests', () => {
         fc.property(imagesArrayArb, (images) => {
           const serialized = JSON.stringify(images);
           const deserialized = JSON.parse(serialized) as ImageContent[];
-          
+
           expect(deserialized.length).toBe(images.length);
-          
+
           images.forEach((img, i) => {
             expect(deserialized[i]).toEqual(img);
           });
@@ -128,7 +128,7 @@ describe('Image Utils Property Tests', () => {
         fc.property(imagesArrayArb, imageContentArb, (existingImages, newImage) => {
           const before = [...existingImages];
           const after = addImage(existingImages, newImage);
-          
+
           expect(after.length).toBe(before.length + 1);
         }),
         { numRuns: 100 }
@@ -139,7 +139,7 @@ describe('Image Utils Property Tests', () => {
       fc.assert(
         fc.property(imagesArrayArb, imageContentArb, (existingImages, newImage) => {
           const after = addImage(existingImages, newImage);
-          
+
           expect(after[after.length - 1]).toEqual(newImage);
         }),
         { numRuns: 100 }
@@ -150,7 +150,7 @@ describe('Image Utils Property Tests', () => {
       fc.assert(
         fc.property(imagesArrayArb, imageContentArb, (existingImages, newImage) => {
           const after = addImage(existingImages, newImage);
-          
+
           existingImages.forEach((img, i) => {
             expect(after[i]).toEqual(img);
           });
@@ -178,7 +178,7 @@ describe('Image Utils Property Tests', () => {
           (images, indexSeed) => {
             const index = indexSeed % images.length;
             const after = removeImage(images, index);
-            
+
             expect(after.length).toBe(images.length - 1);
           }
         ),
@@ -195,7 +195,7 @@ describe('Image Utils Property Tests', () => {
             const index = indexSeed % images.length;
             const removedImage = images[index];
             const after = removeImage(images, index);
-            
+
             // The specific image at that index should not be at that position
             // Note: we check by reference since IDs could theoretically collide
             expect(after[index]).not.toBe(removedImage);
@@ -213,12 +213,12 @@ describe('Image Utils Property Tests', () => {
           (images, indexSeed) => {
             const index = indexSeed % images.length;
             const after = removeImage(images, index);
-            
+
             // Images before the removed index should be unchanged
             for (let i = 0; i < index; i++) {
               expect(after[i]).toEqual(images[i]);
             }
-            
+
             // Images after the removed index should shift down
             for (let i = index; i < after.length; i++) {
               expect(after[i]).toEqual(images[i + 1]);
@@ -271,7 +271,7 @@ describe('Image Utils Property Tests', () => {
       fc.assert(
         fc.property(roleArb, (role) => {
           const visible = shouldShowImageButton(role);
-          
+
           if (role === 'user') {
             expect(visible).toBe(true);
           } else {
@@ -315,7 +315,7 @@ describe('Image Utils Property Tests', () => {
           roleArb,
           (preset, newRole) => {
             const changed = changeRole(preset, newRole);
-            
+
             // Images should be preserved regardless of role change
             expect(changed.images).toEqual(preset.images);
           }
@@ -334,7 +334,7 @@ describe('Image Utils Property Tests', () => {
             const changed = changeRole(preset, intermediateRole);
             // Change back to user
             const restored = changeRole(changed, 'user');
-            
+
             // Images should be preserved
             expect(restored.images).toEqual(preset.images);
           }
@@ -350,11 +350,11 @@ describe('Image Utils Property Tests', () => {
           fc.array(roleArb, { minLength: 1, maxLength: 10 }),
           (preset, roleChanges) => {
             let current = preset;
-            
+
             for (const role of roleChanges) {
               current = changeRole(current, role);
             }
-            
+
             // Images should be preserved after all changes
             expect(current.images).toEqual(preset.images);
           }
@@ -374,7 +374,7 @@ import {
   buildDataUrl,
   isSupportedImageType,
   getImageTypeLabel
-} from '../lib/imageUtils';
+} from '../core/utils/imageUtils';
 
 describe('Image Utils Functions', () => {
   /**
@@ -397,7 +397,7 @@ describe('Image Utils Functions', () => {
           (base64, mimeType) => {
             const dataUrl = buildDataUrl(base64, mimeType);
             const parsed = parseDataUrl(dataUrl);
-            
+
             expect(parsed).not.toBeNull();
             expect(parsed?.base64).toBe(base64);
             expect(parsed?.mimeType).toBe(mimeType);
@@ -428,7 +428,7 @@ describe('Image Utils Functions', () => {
           (base64, mimeType) => {
             const dataUrl = `data:${mimeType};base64,${base64}`;
             const result = buildDataUrl(dataUrl, 'image/gif'); // Different mime type
-            
+
             // Should return the original data URL unchanged
             expect(result).toBe(dataUrl);
           }
@@ -517,8 +517,8 @@ import {
   buildVisionContent,
   normalizeMessages,
   type VisionContentPart
-} from '../lib/plugins';
-import type { PluginRequest } from '../types';
+} from '../modules/provider/domain/plugins';
+import type { PluginRequest } from '../core/types';
 
 describe('API Format Property Tests', () => {
   /**
@@ -539,9 +539,12 @@ describe('API Format Property Tests', () => {
         fc.assert(
           fc.property(urlImageArb, (image) => {
             const result = imageToVisionContent(image);
-            
-            expect(result.type).toBe('image_url');
-            expect(result.image_url.url).toBe(image.url);
+
+            if (result.type === 'image_url') {
+              expect(result.image_url.url).toBe(image.url);
+            } else {
+              throw new Error('Expected image_url type');
+            }
           }),
           { numRuns: 100 }
         );
@@ -551,10 +554,13 @@ describe('API Format Property Tests', () => {
         fc.assert(
           fc.property(base64ImageArb, (image) => {
             const result = imageToVisionContent(image);
-            
-            expect(result.type).toBe('image_url');
-            expect(result.image_url.url).toMatch(/^data:image\/[^;]+;base64,.+$/);
-            expect(result.image_url.url).toContain(image.base64);
+
+            if (result.type === 'image_url') {
+              expect(result.image_url.url).toMatch(/^data:image\/[^;]+;base64,.+$/);
+              expect(result.image_url.url).toContain(image.base64);
+            } else {
+              throw new Error('Expected image_url type');
+            }
           }),
           { numRuns: 100 }
         );
@@ -591,17 +597,17 @@ describe('API Format Property Tests', () => {
             fc.array(imageContentArb, { minLength: 1, maxLength: 5 }),
             (text, images) => {
               const result = buildVisionContent(text, images);
-              
+
               expect(Array.isArray(result)).toBe(true);
               const contentArray = result as VisionContentPart[];
-              
+
               // Should have text + images count elements
               expect(contentArray.length).toBe(1 + images.length);
-              
+
               // First element should be text
               expect(contentArray[0].type).toBe('text');
               expect((contentArray[0] as any).text).toBe(text);
-              
+
               // Rest should be image_url
               for (let i = 1; i < contentArray.length; i++) {
                 expect(contentArray[i].type).toBe('image_url');
@@ -620,7 +626,7 @@ describe('API Format Property Tests', () => {
             (text, images) => {
               const result = buildVisionContent(text, images);
               const contentArray = result as VisionContentPart[];
-              
+
               const imageUrls = contentArray.filter(c => c.type === 'image_url');
               expect(imageUrls.length).toBe(images.length);
             }
@@ -647,12 +653,12 @@ describe('API Format Property Tests', () => {
                 stream: false,
                 messages: [{ role: 'user', content: text, images }]
               };
-              
+
               const result = normalizeMessages(request);
-              
+
               expect(result.length).toBe(1);
               expect(Array.isArray(result[0].content)).toBe(true);
-              
+
               const contentArray = result[0].content as VisionContentPart[];
               const imageUrls = contentArray.filter(c => c.type === 'image_url');
               expect(imageUrls.length).toBe(images.length);
@@ -678,9 +684,9 @@ describe('API Format Property Tests', () => {
                 stream: false,
                 messages: [{ role: 'user', content: text }]
               };
-              
+
               const result = normalizeMessages(request);
-              
+
               expect(result.length).toBe(1);
               expect(typeof result[0].content).toBe('string');
               expect(result[0].content).toBe(text);
@@ -705,9 +711,9 @@ describe('API Format Property Tests', () => {
                 stream: false,
                 messages: [{ role: 'user', content: '', images }]
               };
-              
+
               const result = normalizeMessages(request);
-              
+
               // Message with images but empty text should still be included
               expect(result.length).toBe(1);
               expect(Array.isArray(result[0].content)).toBe(true);

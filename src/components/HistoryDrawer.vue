@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Button, Collapse, Drawer, Empty, Input, Space, Tag, Typography } from 'ant-design-vue';
-import type { HistoryItem } from '../types';
+import type { HistoryItem } from '../core/types';
 
 const { Search: InputSearch } = Input;
 const { Paragraph: TypographyParagraph } = Typography;

@@ -2,8 +2,8 @@
 import { reactive, ref, computed } from 'vue';
 import { Modal, Button, Space, Input, Select, Form, FormItem, List, ListItem, ListItemMeta, Popconfirm, Upload, message } from 'ant-design-vue';
 import { DeleteOutlined, EditOutlined, ExportOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue';
-import type { ProviderProfile, ProviderProfileDraft, Plugin } from '../../types';
-import { newId } from '../../lib/id';
+import type { ProviderProfile, ProviderProfileDraft, Plugin } from '../../../../core/types';
+import { newId } from '../../../../core/utils/id';
 
 const props = defineProps<{
   open: boolean;

@@ -10,9 +10,9 @@ import type {
   Slot,
   UserPromptPreset,
   GatewayConfig
-} from './types';
-import { plugins } from './lib/plugins';
-import { newId } from './lib/id';
+} from './core/types';
+import { plugins } from './modules/provider/domain/plugins';
+import { newId } from './core/utils/id';
 import { buildProvidersExportZip, downloadBlob, parseProvidersImportZip } from './lib/providerTransfer';
 import {
   getItem,
@@ -24,27 +24,27 @@ import {
   isLocalStorageAvailable,
   enableMemoryFallback,
   migrateToProjectNamespace,
-} from './lib/storage';
+} from './core/storage';
 import { useProjectManager } from './composables/useProjectManager';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
-import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './lib/gatewayPlugin';
+import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 
 // 新组件导入
 import AppToolbar from './components/layout/AppToolbar.vue';
 import MainWorkspace from './components/layout/MainWorkspace.vue';
-import SlotsGrid from './components/slots/SlotsGrid.vue';
+import SlotsGrid from './modules/provider/components/slots/SlotsGrid.vue';
 import PromptComposer from './components/prompt/PromptComposer.vue';
 import HistoryDrawer from './components/drawers/HistoryDrawer.vue';
 import VarsModal from './components/modals/VarsModal.vue';
 import GlobalParamsModal from './components/modals/GlobalParamsModal.vue';
-import ToolsModal from './components/modals/ToolsModal.vue';
+import ToolsModal from './modules/provider/components/modals/ToolsModal.vue';
 import ProjectSelector from './components/layout/ProjectSelector.vue';
-import CurlImportModal from './components/modals/CurlImportModal.vue';
-import type { ImportResult } from './components/modals/CurlImportModal.vue';
+import CurlImportModal from './modules/provider/components/modals/CurlImportModal.vue';
+import type { ImportResult } from './modules/provider/components/modals/CurlImportModal.vue';
 import { shouldOverwriteSlot } from './lib/curlParser';
 
 // 旧组件（保留兼容）
-import ProviderPanel from './components/ProviderPanel.vue';
+import ProviderPanel from './modules/provider/components/ProviderPanel.vue';
 import CodeDialog from './components/CodeDialog.vue';
 import HistoryLoadDialog from './components/HistoryLoadDialog.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
@@ -142,7 +142,7 @@ const initialUserPrompt: UserPromptPreset = {
 // 共享状态
 const shared = reactive<SharedState>({
   userPrompts: [initialUserPrompt],
-  toolsDefinition: '[{"type":"function","function":{"name":"fetchDocs","description":"Query project docs","parameters":{"type":"object","properties":{},"additionalProperties":true}}}]',
+  toolsDefinition: '[]',
   variables: [{ id: newId(), key: '', value: '' }],
   defaultParams: { ...defaultSharedParams },
   enableSuggestions: true,
@@ -587,9 +587,43 @@ function createSlot(copyFrom?: Slot): Slot {
   };
 }
 
-function addSlot(copyFrom?: Slot) {
-  slots.value.push(createSlot(copyFrom));
+const slotAppendDebug = true;
+
+function traceSlotAppend(params: {
+  action: 'append';
+  source: string;
+  slotId?: string;
+  before?: number;
+  after?: number;
+  reason?: string;
+}) {
+  if (!slotAppendDebug) return;
+  const title = `[Slots] ${params.action} ${params.source}`;
+  console.groupCollapsed(title);
+  if (params.reason) console.log('reason:', params.reason);
+  if (params.slotId) console.log('slotId:', params.slotId);
+  if (typeof params.before === 'number' || typeof params.after === 'number') {
+    console.log('count:', params.before, '->', params.after);
+  }
+  console.trace('stack');
+  console.groupEnd();
+}
+
+function appendSlot(slot: Slot, source: string) {
+  const beforeCount = slots.value.length;
+  slots.value.push(slot);
+  traceSlotAppend({
+    action: 'append',
+    source,
+    slotId: slot.id,
+    before: beforeCount,
+    after: slots.value.length
+  });
   saveEditorState();
+}
+
+function addSlot(copyFrom?: Slot) {
+  appendSlot(createSlot(copyFrom), copyFrom ? 'copy' : 'manual');
 }
 
 // 添加用户消息（供工具栏调用）
@@ -1257,7 +1291,7 @@ async function handleCurlImport(result: ImportResult) {
     if (result.systemPrompt) {
       targetSlot.systemPrompt = result.systemPrompt;
     }
-    slots.value.push(targetSlot);
+    appendSlot(targetSlot, 'curl-import');
   }
 
   // 导入用户消息

@@ -11,7 +11,7 @@
 import { ref, watch } from 'vue';
 import { Modal, Button, Space, Checkbox, message } from 'ant-design-vue';
 import { CopyOutlined, CheckOutlined } from '@ant-design/icons-vue';
-import JsonEditor from '../JsonEditor.vue';
+import JsonEditor from '../../../../components/JsonEditor.vue';
 
 const props = defineProps<{
   open: boolean;

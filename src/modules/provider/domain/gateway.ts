@@ -7,8 +7,8 @@
  * - Error response parsing
  */
 
-import type { GatewayProvider, GatewayConfig } from '../types';
-import { getToken, clearToken } from './oauth';
+import type { GatewayProvider, GatewayConfig } from '../../../core/types';
+import { getToken, clearToken } from '../../../lib/oauth';
 
 // Custom error for authentication failures
 export class AuthenticationError extends Error {
@@ -25,9 +25,9 @@ export function parseErrorResponse(data: unknown): string {
   if (!data || typeof data !== 'object') {
     return '未知错误';
   }
-  
+
   const obj = data as Record<string, unknown>;
-  
+
   // OpenAI-style error
   if (obj.error && typeof obj.error === 'object') {
     const error = obj.error as Record<string, unknown>;
@@ -35,22 +35,22 @@ export function parseErrorResponse(data: unknown): string {
       return error.message;
     }
   }
-  
+
   // Direct message
   if (typeof obj.message === 'string') {
     return obj.message;
   }
-  
+
   // Error description (OAuth style)
   if (typeof obj.error_description === 'string') {
     return obj.error_description;
   }
-  
+
   // Error string
   if (typeof obj.error === 'string') {
     return obj.error;
   }
-  
+
   return '未知错误';
 }
 
@@ -85,10 +85,10 @@ export function parseProviderList(data: unknown): GatewayProvider[] {
   if (!data || typeof data !== 'object') {
     return [];
   }
-  
+
   const obj = data as Record<string, unknown>;
   const list = Array.isArray(obj.data) ? obj.data : [];
-  
+
   return list
     .filter((item): item is Record<string, unknown> => item && typeof item === 'object')
     .map((item) => ({
@@ -98,11 +98,11 @@ export function parseProviderList(data: unknown): GatewayProvider[] {
       defaultModelsUrl: typeof item.defaultModelsUrl === 'string' ? item.defaultModelsUrl : '',
       fallbackModels: Array.isArray(item.fallbackModels)
         ? item.fallbackModels
-            .filter((m): m is Record<string, unknown> => m && typeof m === 'object')
-            .map((m) => ({
-              id: typeof m.id === 'string' ? m.id : '',
-              label: typeof m.label === 'string' ? m.label : (typeof m.id === 'string' ? m.id : ''),
-            }))
+          .filter((m): m is Record<string, unknown> => m && typeof m === 'object')
+          .map((m) => ({
+            id: typeof m.id === 'string' ? m.id : '',
+            label: typeof m.label === 'string' ? m.label : (typeof m.id === 'string' ? m.id : ''),
+          }))
         : [],
     }))
     .filter((p) => p.id !== '');
@@ -115,10 +115,10 @@ export function parseModelList(data: unknown): { id: string; label: string }[] {
   if (!data || typeof data !== 'object') {
     return [];
   }
-  
+
   const obj = data as Record<string, unknown>;
   const list = Array.isArray(obj.data) ? obj.data : [];
-  
+
   return list
     .filter((item): item is Record<string, unknown> => item && typeof item === 'object')
     .map((item) => {
@@ -142,7 +142,7 @@ export async function fetchGatewayProviders(
   if (!token) {
     throw new AuthenticationError('未登录');
   }
-  
+
   const url = buildProvidersUrl(gatewayConfig.baseUrl);
   const resp = await fetch(url, {
     headers: {
@@ -150,17 +150,17 @@ export async function fetchGatewayProviders(
       'Accept': 'application/json',
     },
   });
-  
+
   if (resp.status === 401) {
     clearToken(projectId);
     throw new AuthenticationError('Token 已过期，请重新登录');
   }
-  
+
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));
     throw new Error(parseErrorResponse(data));
   }
-  
+
   const data = await resp.json();
   return parseProviderList(data);
 }

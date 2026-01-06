@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Checkbox, Col, Modal, Row, Space, Typography } from 'ant-design-vue';
-import type { HistoryItem } from '../types';
+import type { HistoryItem } from '../core/types';
 
 const { Text } = Typography;
 

@@ -21,7 +21,7 @@ import {
   isValidProjectName,
   validateProjectName,
 } from '../composables/useProjectManager';
-import { setCurrentProjectId } from '../lib/storage';
+import { setCurrentProjectId } from '../core/storage';
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -74,10 +74,10 @@ describe('useProjectManager', () => {
       fc.assert(
         fc.property(validProjectNameArb, (name) => {
           const { createProject, projects } = useProjectManager();
-          
+
           const existingIds = new Set(projects.value.map(p => p.id));
           const newProject = createProject(name);
-          
+
           expect(newProject).not.toBeNull();
           expect(newProject!.id).toBeDefined();
           expect(existingIds.has(newProject!.id)).toBe(false);
@@ -92,12 +92,12 @@ describe('useProjectManager', () => {
           fc.array(validProjectNameArb, { minLength: 2, maxLength: 10 }),
           (names) => {
             const { createProject, projects } = useProjectManager();
-            
+
             const createdProjects = names.map(name => createProject(name));
             const ids = createdProjects
               .filter(p => p !== null)
               .map(p => p!.id);
-            
+
             // All IDs should be unique
             const uniqueIds = new Set(ids);
             expect(uniqueIds.size).toBe(ids.length);
@@ -112,7 +112,7 @@ describe('useProjectManager', () => {
         fc.property(validProjectNameArb, (name) => {
           const { createProject } = useProjectManager();
           const newProject = createProject(name);
-          
+
           expect(newProject).not.toBeNull();
           expect(newProject!.name).toBe(name.trim());
         }),
@@ -130,9 +130,9 @@ describe('useProjectManager', () => {
     it('rejects empty string', () => {
       const { createProject, projects } = useProjectManager();
       const initialCount = projects.value.length;
-      
+
       const result = createProject('');
-      
+
       expect(result).toBeNull();
       expect(projects.value.length).toBe(initialCount);
     });
@@ -142,9 +142,9 @@ describe('useProjectManager', () => {
         fc.property(whitespaceOnlyArb, (name) => {
           const { createProject, projects } = useProjectManager();
           const initialCount = projects.value.length;
-          
+
           const result = createProject(name);
-          
+
           expect(result).toBeNull();
           expect(projects.value.length).toBe(initialCount);
         }),
@@ -173,15 +173,15 @@ describe('useProjectManager', () => {
       const { createProject, switchProject, currentProjectId, projects } = useProjectManager();
       const newProject = createProject('Test Project');
       expect(newProject).not.toBeNull();
-      
+
       // Manually save to storage (simulating what watch would do)
       localStorageMock.setItem('truestprompt-projects', JSON.stringify(projects.value));
       localStorageMock.setItem('truestprompt-current-project', newProject!.id);
-      
+
       // Second session: initialize and verify
       const manager2 = useProjectManager();
       manager2.initialize();
-      
+
       expect(manager2.currentProjectId.value).toBe(newProject!.id);
     });
 
@@ -189,10 +189,10 @@ describe('useProjectManager', () => {
       // Save a non-existent project ID
       localStorageMock.setItem('truestprompt-current-project', 'non-existent-id');
       localStorageMock.setItem('truestprompt-projects', JSON.stringify([DEFAULT_PROJECT]));
-      
+
       const { initialize, currentProjectId } = useProjectManager();
       initialize();
-      
+
       expect(currentProjectId.value).toBe(DEFAULT_PROJECT.id);
     });
   });
@@ -206,12 +206,12 @@ describe('useProjectManager', () => {
       fc.assert(
         fc.property(validProjectNameArb, validProjectNameArb, (originalName, newName) => {
           const { createProject, renameProject, projects } = useProjectManager();
-          
+
           const project = createProject(originalName);
           expect(project).not.toBeNull();
-          
+
           const result = renameProject(project!.id, newName);
-          
+
           expect(result).toBe(true);
           const updated = projects.value.find(p => p.id === project!.id);
           expect(updated?.name).toBe(newName.trim());
@@ -222,14 +222,14 @@ describe('useProjectManager', () => {
 
     it('updates updatedAt timestamp on rename', () => {
       const { createProject, renameProject, projects } = useProjectManager();
-      
+
       const project = createProject('Original');
       expect(project).not.toBeNull();
       const originalUpdatedAt = project!.updatedAt;
-      
+
       // Wait a bit to ensure timestamp difference
       const result = renameProject(project!.id, 'New Name');
-      
+
       expect(result).toBe(true);
       const updated = projects.value.find(p => p.id === project!.id);
       expect(updated?.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt);
@@ -246,12 +246,12 @@ describe('useProjectManager', () => {
       fc.assert(
         fc.property(validProjectNameArb, whitespaceOnlyArb, (originalName, newName) => {
           const { createProject, renameProject, projects } = useProjectManager();
-          
+
           const project = createProject(originalName);
           expect(project).not.toBeNull();
-          
+
           const result = renameProject(project!.id, newName);
-          
+
           expect(result).toBe(false);
           const unchanged = projects.value.find(p => p.id === project!.id);
           expect(unchanged?.name).toBe(originalName.trim());
@@ -269,15 +269,15 @@ describe('useProjectManager', () => {
   describe('Property 10: Deleting Active Project Switches to Default', () => {
     it('switches to default when deleting active project', async () => {
       const { createProject, deleteProject, switchProject, currentProjectId } = useProjectManager();
-      
+
       const project = createProject('To Delete');
       expect(project).not.toBeNull();
-      
+
       await switchProject(project!.id);
       expect(currentProjectId.value).toBe(project!.id);
-      
+
       const result = await deleteProject(project!.id);
-      
+
       expect(result).toBe(true);
       expect(currentProjectId.value).toBe(DEFAULT_PROJECT.id);
     });
@@ -285,9 +285,9 @@ describe('useProjectManager', () => {
     it('cannot delete default project', async () => {
       const { deleteProject, projects } = useProjectManager();
       const initialCount = projects.value.length;
-      
+
       const result = await deleteProject(DEFAULT_PROJECT.id);
-      
+
       expect(result).toBe(false);
       expect(projects.value.length).toBe(initialCount);
       expect(projects.value.some(p => p.id === DEFAULT_PROJECT.id)).toBe(true);
@@ -302,18 +302,18 @@ describe('useProjectManager', () => {
   describe('Property 14: Projects Sorted by Last Used Time', () => {
     it('sortedProjects returns projects in descending updatedAt order', () => {
       const { createProject, sortedProjects } = useProjectManager();
-      
+
       // Create projects with explicit delays to ensure different timestamps
       const project1 = createProject('Project 1');
       expect(project1).not.toBeNull();
-      
+
       // Manually set different updatedAt values to test sorting
       const project2 = createProject('Project 2');
       expect(project2).not.toBeNull();
-      
+
       const project3 = createProject('Project 3');
       expect(project3).not.toBeNull();
-      
+
       // Verify sorted order (most recent first)
       const sorted = sortedProjects.value;
       for (let i = 1; i < sorted.length; i++) {
@@ -324,7 +324,7 @@ describe('useProjectManager', () => {
     it('sorting is stable for equal timestamps', () => {
       // This test verifies that even with equal timestamps, sorting doesn't fail
       const { projects, sortedProjects } = useProjectManager();
-      
+
       // All projects have the same updatedAt (0 for default)
       // Sorting should still work without errors
       expect(() => sortedProjects.value).not.toThrow();

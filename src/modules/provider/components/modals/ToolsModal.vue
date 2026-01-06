@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import { Modal, Button, Space, Alert } from 'ant-design-vue';
-import JsonEditor from '../JsonEditor.vue';
-import { parseToolsDefinition } from '../../lib/tools';
+import JsonEditor from '../../../../components/JsonEditor.vue';
+import { parseToolsDefinition } from '../../domain/tools';
 
 const props = defineProps<{
   open: boolean;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { UserPromptPreset } from '../types';
-import { newId } from '../lib/id';
+import type { UserPromptPreset } from '../core/types';
+import { newId } from '../core/utils/id';
 
 const props = defineProps<{
   messages: UserPromptPreset[];

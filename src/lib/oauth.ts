@@ -6,7 +6,7 @@
  */
 
 import * as oauth from 'oauth4webapi';
-import type { GatewayConfig, TokenInfo } from '../types';
+import type { GatewayConfig, TokenInfo } from '../core/types';
 
 // Storage key prefixes
 const TOKEN_PREFIX = 'truestprompt-gateway-token-';
@@ -60,11 +60,11 @@ export function validateGatewayConfig(config: Partial<GatewayConfig> | undefined
   if (!config) return false;
   if (typeof config.enabled !== 'boolean') return false;
   if (!config.enabled) return true; // Disabled config is valid
-  
+
   // When enabled, baseUrl and clientId must be non-empty strings
   if (typeof config.baseUrl !== 'string' || config.baseUrl.trim() === '') return false;
   if (typeof config.clientId !== 'string' || config.clientId.trim() === '') return false;
-  
+
   return true;
 }
 
@@ -102,22 +102,22 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
   const data = encoder.encode(verifier);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = new Uint8Array(hashBuffer);
-  
+
   // Convert to BASE64URL
   let base64 = '';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  
+
   for (let i = 0; i < hashArray.length; i += 3) {
     const a = hashArray[i];
     const b = hashArray[i + 1] || 0;
     const c = hashArray[i + 2] || 0;
-    
+
     base64 += chars[a >> 2];
     base64 += chars[((a & 3) << 4) | (b >> 4)];
     base64 += i + 1 < hashArray.length ? chars[((b & 15) << 2) | (c >> 6)] : '';
     base64 += i + 2 < hashArray.length ? chars[c & 63] : '';
   }
-  
+
   // Convert to BASE64URL: replace + with -, / with _, remove =
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -140,7 +140,7 @@ export function getToken(projectId: string): TokenInfo | null {
   try {
     const stored = sessionStorage.getItem(`${TOKEN_PREFIX}${projectId}`);
     if (!stored) return null;
-    
+
     const parsed = JSON.parse(stored) as TokenInfo;
     return parsed;
   } catch {
@@ -210,10 +210,10 @@ export function retrievePKCE(state: string): StoredPKCE | null {
   try {
     const stored = sessionStorage.getItem(`${PKCE_PREFIX}${state}`);
     if (!stored) return null;
-    
+
     // Remove after retrieval (one-time use)
     sessionStorage.removeItem(`${PKCE_PREFIX}${state}`);
-    
+
     return JSON.parse(stored) as StoredPKCE;
   } catch {
     return null;
@@ -236,10 +236,10 @@ export async function startOAuthLogin(
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   const state = generateState();
-  
+
   // Get redirect URI from config
   const redirectUri = getRedirectUri(gatewayConfig);
-  
+
   // Store PKCE data for callback
   storePKCE(state, {
     codeVerifier,
@@ -249,7 +249,7 @@ export async function startOAuthLogin(
     redirectPath: gatewayConfig.redirectPath || DEFAULT_REDIRECT_PATH,
     timestamp: Date.now(),
   });
-  
+
   // Build authorization URL
   const authUrl = new URL(getAuthorizeUrl(gatewayConfig));
   authUrl.searchParams.set('client_id', gatewayConfig.clientId);
@@ -258,7 +258,7 @@ export async function startOAuthLogin(
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
-  
+
   // Redirect to authorization page
   window.location.href = authUrl.toString();
 }
@@ -293,7 +293,7 @@ export function extractCallbackParams(url: string): { code?: string; state?: str
  */
 export async function handleOAuthCallback(callbackUrl: string): Promise<{ success: true; projectId: string } | { success: false; error: string }> {
   const params = extractCallbackParams(callbackUrl);
-  
+
   // Check for error response
   if (params.error) {
     return {
@@ -301,7 +301,7 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<{ succes
       error: params.errorDescription || params.error || '认证失败',
     };
   }
-  
+
   // Validate required parameters
   if (!params.code || !params.state) {
     return {
@@ -309,7 +309,7 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<{ succes
       error: '回调参数不完整',
     };
   }
-  
+
   // Retrieve PKCE data
   const pkceData = retrievePKCE(params.state);
   if (!pkceData) {
@@ -318,11 +318,11 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<{ succes
       error: '认证失败：状态验证失败，可能存在 CSRF 攻击',
     };
   }
-  
+
   // Build token URL and redirect URI from stored PKCE data
   const tokenUrl = `${pkceData.gatewayBaseUrl}${pkceData.tokenEndpoint}`;
   const redirectUri = `${window.location.origin}${pkceData.redirectPath}`;
-  
+
   // Exchange code for token
   try {
     const tokenResponse = await fetch(tokenUrl, {
@@ -337,7 +337,7 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<{ succes
         code_verifier: pkceData.codeVerifier,
       }),
     });
-    
+
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json().catch(() => ({}));
       return {
@@ -345,10 +345,10 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<{ succes
         error: (errorData as any)?.error_description || (errorData as any)?.error || `Token 交换失败: HTTP ${tokenResponse.status}`,
       };
     }
-    
+
     const tokenData = await tokenResponse.json();
     const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 604800; // Default 7 days
-    
+
     // Store token
     const tokenInfo: TokenInfo = {
       accessToken: tokenData.access_token,
@@ -356,7 +356,7 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<{ succes
       projectId: pkceData.projectId,
     };
     setToken(pkceData.projectId, tokenInfo);
-    
+
     return {
       success: true,
       projectId: pkceData.projectId,
@@ -408,12 +408,12 @@ export async function refreshToken(
   if (!currentToken) {
     return null;
   }
-  
+
   // Note: The LLM Proxy Gateway documentation doesn't specify a refresh token endpoint.
   // In a real implementation, you would call the refresh endpoint here.
   // For now, we return null to indicate refresh is not supported,
   // and the user should re-authenticate.
-  
+
   return null;
 }
 
@@ -426,13 +426,13 @@ export async function checkAndRefreshTokens(
   gatewayConfig: GatewayConfig | undefined
 ): Promise<boolean> {
   if (!gatewayConfig?.enabled) return false;
-  
+
   if (isTokenExpiringSoon(projectId)) {
     const refreshed = await refreshToken(gatewayConfig, projectId);
     if (!refreshed) {
       return true; // Needs re-auth
     }
   }
-  
+
   return false;
 }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Button } from 'ant-design-vue';
-import type { ProviderProfile, Slot, SharedState, ToolCall } from '../types';
+import type { ProviderProfile, Slot, SharedState, ToolCall } from '../core/types';
 import JsonEditor from './JsonEditor.vue';
+import OutputBubble from '../modules/provider/components/slots/OutputBubble.vue';
 
 const props = defineProps<{
   slot: Slot;
@@ -94,19 +95,6 @@ const advancedJsonValue = computed(() =>
   props.slot.paramOverride ? JSON.stringify(props.slot.paramOverride, null, 2) : ''
 );
 
-const toolCallView = ref<'json' | 'raw'>('raw');
-
-function parseArguments(value: unknown) {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    return value;
-  }
-}
-
 function updateAdvancedJson(value: string) {
   if (!value.trim()) {
     props.slot.paramOverride = null;
@@ -119,59 +107,7 @@ function updateAdvancedJson(value: string) {
   }
 }
 
-const parsedToolCalls = computed(() =>
-  (props.slot.toolCalls || []).map((call: ToolCall) => {
-    if (!call.function) return call;
-    const parsed = parseArguments(call.function.arguments);
-    return {
-      ...call,
-      function: {
-        ...call.function,
-        arguments: parsed
-      }
-    };
-  })
-);
 
-const toolCallsJson = computed(() =>
-  parsedToolCalls.value.length ? JSON.stringify(parsedToolCalls.value, null, 2) : ''
-);
-
-const toolCallsRawText = computed(() =>
-  props.slot.toolCalls && props.slot.toolCalls.length ? JSON.stringify(props.slot.toolCalls, null, 2) : ''
-);
-
-const shouldShowToolCalls = computed(() => props.slot.status === 'running' || (props.slot.toolCalls?.length || 0) > 0);
-
-const tokensSummary = computed(() => {
-  const tokens = props.slot.metrics.tokens;
-  if (!tokens) return '';
-  const prompt = tokens.prompt ?? '-';
-  const completion = tokens.completion ?? '-';
-  const total = tokens.total ?? '-';
-  if (prompt === '-' && completion === '-' && total === '-') return '';
-  return `${prompt}/${completion}/${total}`;
-});
-
-watch(
-  () => props.slot.status,
-  (status) => {
-    if (status === 'running') {
-      toolCallView.value = 'raw';
-    } else if (status !== 'running' && toolCallView.value === 'raw' && (props.slot.toolCalls?.length || 0) > 0) {
-      toolCallView.value = 'json';
-    }
-  }
-);
-
-watch(
-  () => props.slot.toolCalls?.length || 0,
-  (len) => {
-    if (len > 0 && props.slot.status !== 'running' && toolCallView.value === 'raw') {
-      toolCallView.value = 'json';
-    }
-  }
-);
 </script>
 
 <template>
@@ -335,47 +271,16 @@ watch(
     </label>
 
 
+    <!-- 输出区域 - 使用 OutputBubble 组件 -->
     <div class="slot-output">
-      <div class="slot-output__head">
-        <span>输出 ({{ props.streamOutput ? '流式' : '非流式' }})</span>
-        <div class="slot-metrics">
-          <span class="chip">TTFB {{ props.slot.metrics.ttfbMs ? `${props.slot.metrics.ttfbMs.toFixed(0)} ms` : '-' }}</span>
-          <span class="chip">耗时 {{ props.slot.metrics.totalMs ? `${props.slot.metrics.totalMs.toFixed(0)} ms` : '-' }}</span>
-          <span v-if="tokensSummary" class="chip">Tokens {{ tokensSummary }}</span>
-        </div>
-      </div>
-      <pre class="slot-output__body">{{ props.slot.output || '等待运行...' }}</pre>
-    </div>
-
-    <div v-if="shouldShowToolCalls" class="slot-toolcalls">
-      <div class="slot-output__head">
-        <span>Tool Calls</span>
-        <div class="slot-toolcalls__toggle">
-          <button
-            class="toolcalls-toggle-btn"
-            :class="{ active: toolCallView === 'json' }"
-            :disabled="!parsedToolCalls.length"
-            @click="toolCallView = 'json'"
-          >
-            JSON
-          </button>
-          <button
-            class="toolcalls-toggle-btn"
-            :class="{ active: toolCallView === 'raw' }"
-            @click="toolCallView = 'raw'"
-          >
-            Raw Text
-          </button>
-        </div>
-      </div>
-      <JsonEditor
-        v-if="toolCallView === 'json' && parsedToolCalls.length"
-        class="slot-toolcalls__editor"
-        :modelValue="toolCallsJson"
-        readonly
+      <OutputBubble
+        :output="props.slot.output"
+        :thinking="props.slot.thinking || ''"
+        :status="props.slot.status"
+        :metrics="props.slot.metrics"
+        :toolCalls="props.slot.toolCalls"
+        :streamOutput="props.streamOutput"
       />
-      <div v-else-if="toolCallView === 'json'" class="slot-toolcalls__empty">暂无工具调用数据</div>
-      <pre v-else class="slot-toolcalls__raw">{{ toolCallsRawText || '等待工具调用流...' }}</pre>
     </div>
 
     <footer class="slot-card__footer"></footer>

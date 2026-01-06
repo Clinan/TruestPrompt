@@ -24,7 +24,7 @@ import {
   CloseCircleOutlined
 } from '@ant-design/icons-vue';
 import type { UserPromptPreset, VariableBinding, ImageContent } from '../../types';
-import { newId } from '../../lib/id';
+import { newId } from '../../core/utils/id';
 import {
   fileToBase64,
   isValidImageUrl,
@@ -33,7 +33,7 @@ import {
   SUPPORTED_IMAGE_EXTENSIONS,
   isSupportedImageType,
   parseDataUrl
-} from '../../lib/imageUtils';
+} from '../../core/utils/imageUtils';
 
 const { TextArea } = Input;
 
