@@ -21,6 +21,8 @@ const props = defineProps<{
   buildRequestForSlot?: (slot: Slot) => PluginRequest;
   // 高亮的 Slot ID（用于导入动画）
   highlightedSlotId?: string | null;
+  // 工具注册表
+  toolRegistry?: Record<string, any>;
 }>();
 
 const emit = defineEmits<{
@@ -32,6 +34,7 @@ const emit = defineEmits<{
   providerChange: [slot: Slot];
   refreshModels: [slot: Slot];
   'update:slot': [slot: Slot];
+  executeToolCall: [slotId: string, toolCall: any];
 }>();
 
 // 是否可以删除 Slot（至少保留一个）
@@ -97,6 +100,7 @@ function createBuildRequestForSlot(slot: Slot) {
         :default-params="props.defaultParams"
         :build-request="createBuildRequestForSlot(slot)"
         :highlighted="props.highlightedSlotId === slot.id"
+        :tool-registry="props.toolRegistry"
         @copy="emit('copySlot', $event)"
         @remove="emit('removeSlot', $event)"
         @run="emit('runSlot', $event)"
@@ -104,6 +108,7 @@ function createBuildRequestForSlot(slot: Slot) {
         @provider-change="emit('providerChange', $event)"
         @refresh-models="emit('refreshModels', $event)"
         @update:slot="handleSlotUpdate"
+        @execute-tool-call="(slotId, toolCall) => emit('executeToolCall', slotId, toolCall)"
       />
     </TransitionGroup>
     

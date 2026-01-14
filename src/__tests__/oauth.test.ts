@@ -72,7 +72,7 @@ describe('Gateway Config Validation', () => {
     );
   });
 
-  it('Property 1: rejects configs with empty clientId when enabled', () => {
+  it('Property 1: accepts configs with empty clientId when enabled (defaults to truestprompt)', () => {
     fc.assert(
       fc.property(
         fc.record({
@@ -82,7 +82,9 @@ describe('Gateway Config Validation', () => {
         }),
         (config) => {
           const result = validateGatewayConfig(config as any);
-          expect(result).toBe(false);
+          expect(result).toBe(true);
+          // Should default clientId to 'truestprompt'
+          expect(config.clientId).toBe('truestprompt');
         }
       ),
       { numRuns: 100 }

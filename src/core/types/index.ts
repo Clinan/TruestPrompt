@@ -64,6 +64,15 @@ export type Plugin = {
   buildCurl: (config: ProviderProfile, request: PluginRequest) => string;
 };
 
+export type ToolCallExecutionStatus = 'pending' | 'running' | 'success' | 'error';
+
+export type ToolCallExecution = {
+  status: ToolCallExecutionStatus;
+  result?: unknown;
+  error?: string;
+  executedAt?: number;
+};
+
 export type ToolCall = {
   id?: string;
   type?: string;
@@ -71,6 +80,7 @@ export type ToolCall = {
     name?: string;
     arguments?: unknown;
   };
+  execution?: ToolCallExecution;
   [key: string]: unknown;
 };
 

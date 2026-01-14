@@ -27,6 +27,7 @@ type StoredPKCE = {
 export const DEFAULT_AUTHORIZE_ENDPOINT = '/oauth/authorize';
 export const DEFAULT_TOKEN_ENDPOINT = '/oauth/token';
 export const DEFAULT_REDIRECT_PATH = '/auth/callback';
+export const DEFAULT_CLIENT_ID = 'truestprompt';
 
 /**
  * 获取完整的授权端点 URL
@@ -61,9 +62,13 @@ export function validateGatewayConfig(config: Partial<GatewayConfig> | undefined
   if (typeof config.enabled !== 'boolean') return false;
   if (!config.enabled) return true; // Disabled config is valid
 
-  // When enabled, baseUrl and clientId must be non-empty strings
+  // When enabled, baseUrl must be non-empty string
   if (typeof config.baseUrl !== 'string' || config.baseUrl.trim() === '') return false;
-  if (typeof config.clientId !== 'string' || config.clientId.trim() === '') return false;
+  
+  // clientId defaults to 'truestprompt' if not provided
+  if (!config.clientId || typeof config.clientId !== 'string') {
+    config.clientId = DEFAULT_CLIENT_ID;
+  }
 
   return true;
 }
@@ -76,7 +81,7 @@ export function isGatewayConfigComplete(config: GatewayConfig | undefined): bool
   if (!config || !config.enabled) return false;
   return (
     config.baseUrl.trim() !== '' &&
-    config.clientId.trim() !== ''
+    (config.clientId || DEFAULT_CLIENT_ID).trim() !== ''
   );
 }
 
@@ -252,7 +257,7 @@ export async function startOAuthLogin(
 
   // Build authorization URL
   const authUrl = new URL(getAuthorizeUrl(gatewayConfig));
-  authUrl.searchParams.set('client_id', gatewayConfig.clientId);
+  authUrl.searchParams.set('client_id', gatewayConfig.clientId || DEFAULT_CLIENT_ID);
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('state', state);

@@ -12,13 +12,15 @@ import {
   AppstoreAddOutlined,
   MessageOutlined,
   ImportOutlined,
-  MenuOutlined
+  MenuOutlined,
+  ShareAltOutlined
 } from '@ant-design/icons-vue';
 
 const props = defineProps<{
   projectOptions: { id: string; label: string }[];
   selectedProject: string;
   theme: 'light' | 'dark';
+  gatewayConfig?: { enabled: boolean; baseUrl: string; clientId: string } | null;
 }>();
 
 const emit = defineEmits<{
@@ -32,6 +34,7 @@ const emit = defineEmits<{
   addSlot: [];
   addMessage: [];
   importCurl: [];
+  shareProject: [];
 }>();
 
 const themeIcon = computed(() => props.theme === 'light' ? BulbOutlined : BulbFilled);
@@ -119,6 +122,9 @@ function handleMenuClick(key: string) {
     case 'importCurl':
       emit('importCurl');
       break;
+    case 'shareProject':
+      emit('shareProject');
+      break;
     case 'theme':
       emit('toggleTheme');
       break;
@@ -205,6 +211,13 @@ function handleMenuClick(key: string) {
             导入 cURL
           </Button>
         </Tooltip>
+        
+        <Tooltip v-if="gatewayConfig?.enabled" title="分享项目">
+          <Button class="btn-interactive" @click="emit('shareProject')">
+            <template #icon><ShareAltOutlined /></template>
+            分享
+          </Button>
+        </Tooltip>
       </Space>
     </div>
     
@@ -250,6 +263,10 @@ function handleMenuClick(key: string) {
             <MenuItem key="importCurl">
               <ImportOutlined />
               <span>导入 cURL</span>
+            </MenuItem>
+            <MenuItem v-if="gatewayConfig?.enabled" key="shareProject">
+              <ShareAltOutlined />
+              <span>分享项目</span>
             </MenuItem>
             <MenuDivider />
             <MenuItem key="theme">

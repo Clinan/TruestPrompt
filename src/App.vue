@@ -28,6 +28,9 @@ import {
 import { useProjectManager } from './composables/useProjectManager';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
+import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
+import { executeToolFromRegistry, type ToolRegistry } from './lib/toolExecutor';
+import type { ToolCall } from './core/types';
 
 // 新组件导入
 import AppToolbar from './components/layout/AppToolbar.vue';
@@ -37,7 +40,7 @@ import PromptComposer from './components/prompt/PromptComposer.vue';
 import HistoryDrawer from './components/drawers/HistoryDrawer.vue';
 import VarsModal from './components/modals/VarsModal.vue';
 import GlobalParamsModal from './components/modals/GlobalParamsModal.vue';
-import ToolsModal from './modules/provider/components/modals/ToolsModal.vue';
+import ToolsDrawer from './modules/provider/components/modals/ToolsDrawer.vue';
 import ProjectSelector from './components/layout/ProjectSelector.vue';
 import CurlImportModal from './modules/provider/components/modals/CurlImportModal.vue';
 import type { ImportResult } from './modules/provider/components/modals/CurlImportModal.vue';
@@ -148,6 +151,9 @@ const shared = reactive<SharedState>({
   enableSuggestions: true,
   streamOutput: true
 });
+
+// 工具注册表（不再使用localStorage，保存到编辑器状态）
+const toolRegistry = ref<ToolRegistry>({});
 
 // Slots 状态
 const slots = ref<Slot[]>([]);
@@ -271,14 +277,15 @@ function coerceNumber(value: unknown, fallback: number) {
 
 // 编辑器状态持久化
 type PersistedEditorState = {
-  version: 3;
+  version: 4;
   shared: SharedState;
   slots: Array<Pick<Slot, 'id' | 'providerProfileId' | 'pluginId' | 'modelId' | 'systemPrompt' | 'paramOverride'>>;
+  toolRegistry?: ToolRegistry;
 };
 
 function serializeEditorState(): PersistedEditorState {
   return {
-    version: 3,
+    version: 4,
     shared: {
       userPrompts: shared.userPrompts.map((p) => ({ 
         id: p.id, 
@@ -299,7 +306,8 @@ function serializeEditorState(): PersistedEditorState {
       modelId: slot.modelId,
       systemPrompt: slot.systemPrompt,
       paramOverride: slot.paramOverride
-    }))
+    })),
+    toolRegistry: toolRegistry.value
   };
 }
 
@@ -314,7 +322,7 @@ function loadEditorState() {
   if (!raw) return;
   try {
     const parsed = JSON.parse(raw) as Partial<PersistedEditorState>;
-    if (![1, 2, 3].includes((parsed as PersistedEditorState).version) || !parsed.shared) return;
+    if (![1, 2, 3, 4].includes((parsed as PersistedEditorState).version) || !parsed.shared) return;
 
     const restoredUserPrompts = Array.isArray(parsed.shared.userPrompts)
       ? parsed.shared.userPrompts
@@ -366,6 +374,11 @@ function loadEditorState() {
         systemPrompt: typeof slot.systemPrompt === 'string' ? slot.systemPrompt : '',
         paramOverride: (slot.paramOverride as Record<string, unknown> | null) ?? null
       }));
+    }
+    
+    // 加载工具注册表
+    if (parsed.toolRegistry && typeof parsed.toolRegistry === 'object') {
+      toolRegistry.value = parsed.toolRegistry as ToolRegistry;
     }
   } catch (err) {
     console.warn('加载本地编辑器状态失败，将忽略并使用默认值。', err);
@@ -1178,6 +1191,148 @@ function handleToolsSave(toolsDefinition: string) {
   saveEditorState();
 }
 
+// 工具注册表保存
+function handleToolRegistrySave(registry: ToolRegistry) {
+  toolRegistry.value = registry;
+  saveEditorState();
+}
+
+// 工具执行功能
+async function executeToolCall(slotId: string, toolCall: ToolCall) {
+  const slot = slots.value.find(s => s.id === slotId);
+  if (!slot || !toolCall.function?.name) return;
+  
+  const toolName = toolCall.function.name;
+  let args: Record<string, unknown> = {};
+  
+  // 解析参数
+  try {
+    const argsRaw = toolCall.function.arguments;
+    if (typeof argsRaw === 'string') {
+      args = JSON.parse(argsRaw);
+    } else if (typeof argsRaw === 'object' && argsRaw !== null) {
+      args = argsRaw as Record<string, unknown>;
+    }
+  } catch (err) {
+    console.error('解析工具参数失败：', err);
+    // 更新工具调用状态为错误
+    updateToolCallExecution(slotId, toolCall, {
+      status: 'error',
+      error: '参数解析失败：' + (err instanceof Error ? err.message : String(err))
+    });
+    return;
+  }
+  
+  // 更新状态为执行中
+  updateToolCallExecution(slotId, toolCall, {
+    status: 'running'
+  });
+  
+  try {
+    // 执行工具
+    const result = await executeToolFromRegistry(toolName, args, toolRegistry.value);
+    
+    // 更新状态为成功
+    updateToolCallExecution(slotId, toolCall, {
+      status: 'success',
+      result,
+      executedAt: Date.now()
+    });
+  } catch (err) {
+    console.error('工具执行失败：', err);
+    
+    // 检查是否有详细的错误信息
+    let errorMessage = err instanceof Error ? err.message : String(err);
+    let errorDetails: any = null;
+    
+    if (err instanceof Error && (err as any).details) {
+      errorDetails = (err as any).details;
+      // 构造包含详细信息的错误消息
+      errorMessage = `${errorMessage}\n\n状态码: ${errorDetails.status}\nURL: ${errorDetails.url}\n方法: ${errorDetails.method}`;
+      
+      if (errorDetails.response) {
+        errorMessage += `\n\n响应内容:\n${typeof errorDetails.response === 'string' ? errorDetails.response : JSON.stringify(errorDetails.response, null, 2)}`;
+      }
+    }
+    console.log('错误详情对象：', errorDetails);
+    
+    // 更新状态为错误
+    updateToolCallExecution(slotId, toolCall, {
+      status: 'error',
+      error: errorMessage,
+      result: errorDetails // 直接保存errorDetails，即使是null也保存
+    });
+  }
+}
+
+// 更新工具调用的执行状态
+function updateToolCallExecution(
+  slotId: string,
+  toolCall: ToolCall,
+  execution: Partial<ToolCall['execution']>
+) {
+  const slot = slots.value.find(s => s.id === slotId);
+  if (!slot || !slot.toolCalls) return;
+  
+  const toolCalls = slot.toolCalls.map(tc => {
+    if (tc.id === toolCall.id || (tc === toolCall)) {
+      return {
+        ...tc,
+        execution: {
+          ...tc.execution,
+          ...execution
+        } as ToolCall['execution']
+      };
+    }
+    return tc;
+  });
+  
+  const updatedSlot = { ...slot, toolCalls };
+  updateSlot(updatedSlot);
+}
+
+
+
+// 分享项目处理
+function handleShareProject() {
+  if (!gatewayConfig.value?.enabled) {
+    alert('只有网关模式的项目才能分享');
+    return;
+  }
+  
+  const currentProjectName = currentProject.value?.name;
+  if (!currentProjectName) {
+    alert('当前项目信息不完整，无法分享');
+    return;
+  }
+  
+  try {
+    const shareUrl = generateShareUrl({
+      gatewayUrl: gatewayConfig.value.baseUrl,
+      clientId: gatewayConfig.value.clientId,
+      projectName: currentProjectName,
+      autoLogin: true
+    });
+    
+    // 复制到剪贴板
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert('分享链接已复制到剪贴板！\n\n其他用户打开此链接将自动配置网关并跳转登录。');
+    }).catch(() => {
+      // 降级方案：显示链接让用户手动复制
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      alert('分享链接已复制到剪贴板！\n\n其他用户打开此链接将自动配置网关并跳转登录。');
+    });
+  } catch (err) {
+    console.error('生成分享链接失败:', err);
+    alert(`生成分享链接失败：${err instanceof Error ? err.message : '未知错误'}`);
+  }
+}
+
 // 项目管理处理函数
 function handleCreateProject(name: string) {
   const newProject = createProject(name);
@@ -1193,8 +1348,6 @@ function handleRenameProject(projectId: string, newName: string) {
 async function handleDeleteProject(projectId: string) {
   await deleteProject(projectId);
 }
-
-// cURL 导入处理
 async function handleCurlImport(result: ImportResult) {
   // 调试日志
   console.log('[handleCurlImport] result.provider:', result.provider);
@@ -1362,6 +1515,85 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
   event.returnValue = '';
 }
 
+// URL参数处理函数
+function parseUrlParamsLocal() {
+  return parseUrlParams();
+}
+
+// 自动配置网关并跳转登录
+async function handleAutoGatewayLogin(gatewayUrl: string, clientId: string, projectName?: string) {
+  try {
+    console.log('=== 开始自动网关登录 ===');
+    console.log('网关URL:', gatewayUrl);
+    console.log('Client ID:', clientId);
+    console.log('项目名称:', projectName);
+    
+    // 验证网关URL格式
+    if (!validateGatewayUrl(gatewayUrl)) {
+      throw new Error('无效的网关地址格式');
+    }
+    
+    // 创建或切换到指定项目
+    let targetProjectId = currentProjectId.value;
+    console.log('当前项目ID:', targetProjectId);
+    
+    if (projectName) {
+      // 查找是否已有同名项目
+      const existingProject = projects.value.find(p => p.name === projectName);
+      if (existingProject) {
+        console.log('找到现有项目:', existingProject.name);
+        targetProjectId = existingProject.id;
+        await switchProject(targetProjectId);
+      } else {
+        // 创建新项目
+        console.log('创建新项目:', projectName);
+        const newProject = createProject(projectName);
+        if (newProject) {
+          targetProjectId = newProject.id;
+          await switchProject(targetProjectId);
+        }
+      }
+    }
+    
+    // 配置网关
+    const gatewayConfig: GatewayConfig = {
+      enabled: true,
+      baseUrl: gatewayUrl.replace(/\/$/, ''), // 移除末尾斜杠
+      clientId: clientId,
+      authorizeEndpoint: '/oauth/authorize',
+      tokenEndpoint: '/oauth/token',
+      redirectPath: '/auth/callback'
+    };
+    
+    console.log('网关配置:', gatewayConfig);
+    
+    // 保存网关配置
+    enableGatewayMode(gatewayConfig);
+    console.log('网关配置已保存');
+    
+    // 清除URL参数（避免重复处理）
+    clearShareParams();
+    console.log('URL参数已清除');
+    
+    console.log('准备跳转到OAuth登录...');
+    console.log('目标项目ID:', targetProjectId);
+    
+    // 直接跳转到网关登录
+    const { startOAuthLogin } = await import('./lib/oauth');
+    await startOAuthLogin(gatewayConfig, targetProjectId);
+    
+    console.log('OAuth登录流程已启动');
+    
+  } catch (err) {
+    console.error('=== 自动网关登录失败 ===');
+    console.error('错误详情:', err);
+    alert(`自动登录失败：${err instanceof Error ? err.message : '未知错误'}`);
+    
+    // 清除URL参数
+    clearShareParams();
+  }
+}
+
 // 生命周期
 onMounted(async () => {
   // 检查是否是 OAuth 回调
@@ -1397,6 +1629,20 @@ onMounted(async () => {
   // 初始化项目管理器
   projectManager.initialize();
   
+  // 检查URL参数，处理自动网关登录
+  const urlParams = parseUrlParamsLocal();
+  console.log('URL参数解析结果:', urlParams);
+  
+  if (urlParams.gatewayUrl) {
+    console.log('检测到网关URL参数，开始自动配置...');
+    // 如果有网关URL参数，自动配置并跳转登录
+    await handleAutoGatewayLogin(urlParams.gatewayUrl, urlParams.clientId, urlParams.projectName);
+    return; // 跳转后不继续执行后续初始化
+  } else {
+    console.log('未检测到网关URL参数，继续正常初始化');
+  }
+  
+  // 加载配置
   resetNewProfile();
   loadProfiles();
   loadEditorState();
@@ -1446,6 +1692,7 @@ watch(
       :project-options="sortedProjects.map(p => ({ id: p.id, label: p.name }))"
       :selected-project="currentProjectId"
       :theme="theme"
+      :gateway-config="gatewayConfig"
       @update:selected-project="switchProject"
       @toggle-theme="toggleTheme"
       @open-provider="showProviderManager = true"
@@ -1456,6 +1703,7 @@ watch(
       @add-slot="addSlot()"
       @add-message="addUserMessage()"
       @import-curl="showCurlImportModal = true"
+      @share-project="handleShareProject"
     >
       <template #project-selector>
         <ProjectSelector
@@ -1485,6 +1733,7 @@ watch(
           :default-params="shared.defaultParams"
           :build-request-for-slot="buildRequest"
           :highlighted-slot-id="highlightedSlotId"
+          :tool-registry="toolRegistry"
           @add-slot="addSlot()"
           @copy-slot="copySlot"
           @remove-slot="requestRemoveSlot"
@@ -1493,6 +1742,7 @@ watch(
           @provider-change="onProviderChange"
           @refresh-models="forceRefreshModels"
           @update:slot="updateSlot"
+          @execute-tool-call="executeToolCall"
         />
       </template>
     </MainWorkspace>
@@ -1512,11 +1762,13 @@ watch(
       @save="handleParamsSave"
     />
     
-    <ToolsModal
+    <ToolsDrawer
       :open="showToolsModal"
       :tools-definition="shared.toolsDefinition"
+      :tool-registry="toolRegistry"
       @update:open="showToolsModal = $event"
-      @save="handleToolsSave"
+      @save-definition="handleToolsSave"
+      @save-registry="handleToolRegistrySave"
     />
     
     <!-- cURL 导入弹窗 -->

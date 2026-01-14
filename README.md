@@ -10,6 +10,8 @@ PC Web 端的「大模型调试台」，用同一份 User Prompt + Tools，快�
 - **一键导出 cURL** - 方便调试和分享
 - **本地历史追溯** - Star 标记、搜索筛选、一键载入回放
 - **项目管理** - 多项目完全隔离，独立的 Provider、历史、配置
+- **网关模式** - 支持 LLM Proxy Gateway，OAuth SSO 登录，无需管理 API Key
+- **便捷分享** - 一键生成分享链接，自动配置网关并跳转登录
 
 ## 技术栈
 
@@ -60,13 +62,68 @@ pnpm test
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## 便捷分享功能
+
+### URL 参数自动配置
+
+支持通过 URL 参数自动配置网关并跳转登录，方便团队分享：
+
+```
+https://app.example.com?gateway=https://gateway.example.com&project=MyProject&autoLogin=true
+```
+
+**支持的参数：**
+
+| 参数 | 说明 | 默认值 |
+|-----|------|--------|
+| `gateway` 或 `gatewayUrl` | 网关地址 | - |
+| `clientId` 或 `client_id` | 客户端ID | `truestprompt` |
+| `project` 或 `projectName` | 项目名称 | - |
+| `autoLogin` 或 `auto_login` | 自动跳转登录 | `true` |
+
+### 分享流程
+
+1. **配置网关** - 在 Provider 管理中连接 LLM Proxy Gateway
+2. **点击分享** - 工具栏中的"分享"按钮（仅网关模式显示）
+3. **复制链接** - 自动生成包含网关配置的分享链接
+4. **团队使用** - 其他用户打开链接自动配置并跳转登录
+
+### 使用场景
+
+- **团队协作** - 快速分享调试环境给同事
+- **演示展示** - 一键分享给客户或合作伙伴
+- **培训教学** - 为学员预配置好环境
+
+## 网关模式
+
+### LLM Proxy Gateway 接入
+
+支持通过 OAuth SSO 方式接入企业级 LLM 代理网关，无需管理各厂商 API Key：
+
+**优势：**
+- 🔐 **安全** - 前端无需存储 API Key，通过 OAuth 获取临时 Token
+- 🏢 **企业级** - 支持统一的用户认证和权限管理
+- 🔄 **自动同步** - 登录后自动获取可用的 Provider 和模型列表
+- 📊 **统一计费** - 后端统一管理各厂商的用量和计费
+
+**配置步骤：**
+1. 在 Provider 管理中选择"网关模式"
+2. 填写网关地址和客户端ID（默认：truestprompt）
+3. 点击"连接网关"跳转 OAuth 登录
+4. 登录成功后自动导入可用的 Provider
+
+**网关要求：**
+- 实现 OAuth 2.0 + PKCE 认证流程
+- 提供 OpenAI Compatible API 接口
+- 支持 `/api/llmproxy/providers` 端点获取 Provider 列表
+
+> 详细接入文档：[LLM Proxy Gateway 接入文档](LLM%20Proxy%20Gateway%20接入文档.md)
+
 ## 功能模块
 
 ### 项目管理
 
 支持创建多个独立项目，每个项目的数据完全隔离：
-
-| 功能 | 说明 |
 |-----|------|
 | 新建项目 | 点击项目下拉框 → 新建项目 |
 | 切换项目 | 从下拉框选择目标项目 |

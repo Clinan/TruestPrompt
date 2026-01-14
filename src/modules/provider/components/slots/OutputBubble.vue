@@ -19,6 +19,7 @@ import {
 } from '@ant-design/icons-vue';
 import type { SlotMetrics, ToolCall } from '../../../../core/types';
 import JsonEditor from '../../../../components/JsonEditor.vue';
+import ToolCallItem from './ToolCallItem.vue';
 
 const props = defineProps<{
   output: string;
@@ -27,11 +28,17 @@ const props = defineProps<{
   metrics: SlotMetrics;
   toolCalls: ToolCall[] | null;
   streamOutput: boolean;
+  toolRegistry?: Record<string, any>;
+}>();
+
+const emit = defineEmits<{
+  executeToolCall: [toolCall: ToolCall];
+  updateToolCall: [toolCall: ToolCall];
 }>();
 
 const copied = ref(false);
 const copiedThinking = ref(false);
-const showToolCalls = ref(false);
+const showToolCalls = ref(true); // 默认展开
 const showThinking = ref(true);
 
 const isStreaming = computed(() => props.status === 'running' && props.streamOutput);
@@ -87,6 +94,35 @@ async function copyThinking() {
     message.error('复制失败');
   }
 }
+
+// 批量执行所有工具
+function executeAllTools() {
+  if (!props.toolCalls) return;
+  
+  const pendingTools = props.toolCalls.filter(
+    (tc) => !tc.execution || tc.execution.status === 'pending' || tc.execution.status === 'error'
+  );
+  
+  if (pendingTools.length === 0) {
+    message.info('没有待执行的工具');
+    return;
+  }
+  
+  pendingTools.forEach((tc) => {
+    emit('executeToolCall', tc);
+  });
+}
+
+// 处理单个工具执行
+function handleExecuteToolCall(toolCall: ToolCall) {
+  emit('executeToolCall', toolCall);
+}
+
+// 处理工具更新
+function handleUpdateToolCall(toolCall: ToolCall) {
+  emit('updateToolCall', toolCall);
+}
+
 
 // 获取状态文本
 const statusText = computed(() => {
@@ -197,13 +233,23 @@ const statusText = computed(() => {
             <Space>
               <ThunderboltOutlined />
               <span>Tool Calls ({{ props.toolCalls?.length }})</span>
+              <Button
+                type="primary"
+                size="small"
+                @click.stop="executeAllTools"
+              >
+                批量执行
+              </Button>
             </Space>
           </template>
-          <div class="tool-calls-editor">
-            <JsonEditor
-              :modelValue="formattedToolCalls"
-              readonly
-              language="json"
+          <div class="tool-calls-list">
+            <ToolCallItem
+              v-for="(toolCall, index) in props.toolCalls"
+              :key="toolCall.id || index"
+              :toolCall="toolCall"
+              :toolRegistry="props.toolRegistry || {}"
+              @execute="handleExecuteToolCall"
+              @update="handleUpdateToolCall"
             />
           </div>
         </Collapse.Panel>
@@ -346,23 +392,11 @@ const statusText = computed(() => {
   font-size: 11px;
 }
 
-.tool-calls-editor {
-  border-radius: 4px;
-  overflow: hidden;
-  height: 280px;
-}
-
-.tool-calls-editor :deep(.json-editor) {
-  height: 100%;
-}
-
-.tool-calls-editor :deep(.cm-editor) {
-  height: 100%;
-  font-size: 11px;
-}
-
-.tool-calls-editor :deep(.cm-scroller) {
-  overflow: auto !important;
+.tool-calls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
 }
 
 /* 暗色主题适配 */

@@ -44,6 +44,8 @@ const props = defineProps<{
   buildRequest?: () => PluginRequest;
   // 高亮状态（用于导入动画）
   highlighted?: boolean;
+  // 工具注册表
+  toolRegistry?: Record<string, any>;
 }>();
 
 const emit = defineEmits<{
@@ -54,6 +56,7 @@ const emit = defineEmits<{
   providerChange: [slot: Slot];
   refreshModels: [slot: Slot];
   'update:slot': [slot: Slot];
+  executeToolCall: [slotId: string, toolCall: any];
 }>();
 
 // Provider 选项
@@ -205,6 +208,24 @@ function handlePlaceholderChange(value: boolean) {
     curlCode.value = snippet.code;
   }
 }
+
+// 处理工具调用执行
+function handleExecuteToolCall(toolCall: any) {
+  emit('executeToolCall', props.slot.id, toolCall);
+}
+
+// 处理工具调用更新
+function handleUpdateToolCall(toolCall: any) {
+  // 更新 slot 中的 toolCalls
+  const toolCalls = props.slot.toolCalls || [];
+  const index = toolCalls.findIndex(tc => tc.id === toolCall.id);
+  if (index >= 0) {
+    const updatedToolCalls = [...toolCalls];
+    updatedToolCalls[index] = toolCall;
+    const updatedSlot = { ...props.slot, toolCalls: updatedToolCalls };
+    emit('update:slot', updatedSlot);
+  }
+}
 </script>
 
 <template>
@@ -350,6 +371,9 @@ function handlePlaceholderChange(value: boolean) {
         :metrics="props.slot.metrics"
         :tool-calls="props.slot.toolCalls"
         :stream-output="props.streamOutput"
+        :tool-registry="props.toolRegistry"
+        @execute-tool-call="handleExecuteToolCall"
+        @update-tool-call="handleUpdateToolCall"
       />
     </div>
   </Card>

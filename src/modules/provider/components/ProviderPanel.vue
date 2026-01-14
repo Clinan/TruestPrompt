@@ -55,7 +55,7 @@ const emit = defineEmits<{
 
 // Gateway config form state
 const gatewayBaseUrl = ref(props.gatewayConfig?.baseUrl || '');
-const gatewayClientId = ref(props.gatewayConfig?.clientId || '');
+const gatewayClientId = ref(props.gatewayConfig?.clientId || 'truestprompt');
 const gatewayAuthorizeEndpoint = ref(props.gatewayConfig?.authorizeEndpoint || DEFAULT_AUTHORIZE_ENDPOINT);
 const gatewayTokenEndpoint = ref(props.gatewayConfig?.tokenEndpoint || DEFAULT_TOKEN_ENDPOINT);
 const gatewayRedirectPath = ref(props.gatewayConfig?.redirectPath || DEFAULT_REDIRECT_PATH);
@@ -72,7 +72,7 @@ const selectedProviderIds = ref<string[]>([]);
 watch(() => props.gatewayConfig, (config) => {
   if (config) {
     gatewayBaseUrl.value = config.baseUrl;
-    gatewayClientId.value = config.clientId;
+    gatewayClientId.value = config.clientId || 'truestprompt';
     gatewayAuthorizeEndpoint.value = config.authorizeEndpoint || DEFAULT_AUTHORIZE_ENDPOINT;
     gatewayTokenEndpoint.value = config.tokenEndpoint || DEFAULT_TOKEN_ENDPOINT;
     gatewayRedirectPath.value = config.redirectPath || DEFAULT_REDIRECT_PATH;
@@ -188,7 +188,7 @@ function handleSaveGatewayConfig() {
 function handleCancelGatewayConfig() {
   // Reset to saved values
   gatewayBaseUrl.value = props.gatewayConfig?.baseUrl || '';
-  gatewayClientId.value = props.gatewayConfig?.clientId || '';
+  gatewayClientId.value = props.gatewayConfig?.clientId || 'truestprompt';
   gatewayAuthorizeEndpoint.value = props.gatewayConfig?.authorizeEndpoint || DEFAULT_AUTHORIZE_ENDPOINT;
   gatewayTokenEndpoint.value = props.gatewayConfig?.tokenEndpoint || DEFAULT_TOKEN_ENDPOINT;
   gatewayRedirectPath.value = props.gatewayConfig?.redirectPath || DEFAULT_REDIRECT_PATH;
@@ -340,7 +340,7 @@ const isFormValid = computed(() => {
               <FormItem label="Client ID" required>
                 <Input 
                   v-model:value="gatewayClientId" 
-                  placeholder="OAuth Client ID"
+                  placeholder="truestprompt"
                 />
               </FormItem>
             </Col>
