@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { Codemirror } from 'vue-codemirror';
+import { Button, Tooltip, message } from 'ant-design-vue';
+import { CopyOutlined, CheckOutlined } from '@ant-design/icons-vue';
 import { json } from '@codemirror/lang-json';
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorView } from '@codemirror/view';
@@ -12,6 +14,7 @@ const props = defineProps<{
   placeholder?: string;
   readonly?: boolean;
   language?: 'json' | 'javascript' | 'text';
+  copyable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -20,6 +23,27 @@ const emit = defineEmits<{
 
 const currentValue = computed(() => props.modelValue ?? '');
 const isDark = ref(document.documentElement.getAttribute('data-theme') === 'dark');
+const justCopied = ref(false);
+let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function handleCopy() {
+  const text = props.modelValue ?? '';
+  if (!text) {
+    message.info('内容为空');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    justCopied.value = true;
+    message.success('已复制');
+    if (copyResetTimer) clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      justCopied.value = false;
+    }, 1500);
+  } catch {
+    message.error('复制失败，请检查浏览器剪贴板权限');
+  }
+}
 
 // 监听主题变化
 let observer: MutationObserver | null = null;
@@ -36,6 +60,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   observer?.disconnect();
+  if (copyResetTimer) clearTimeout(copyResetTimer);
 });
 
 const extensions = computed<Extension[]>(() => {
@@ -66,7 +91,7 @@ function handleUpdate(value: string) {
 </script>
 
 <template>
-  <div class="json-editor" :class="{ readonly: props.readonly }">
+  <div class="json-editor" :class="{ readonly: props.readonly, 'has-copy': props.copyable }">
     <Codemirror
       :model-value="currentValue"
       :extensions="extensions"
@@ -77,11 +102,27 @@ function handleUpdate(value: string) {
       :style="{ height: '100%' }"
       @update:modelValue="handleUpdate"
     />
+    <div v-if="props.copyable" class="json-editor__copy" @click.stop>
+      <Tooltip :title="justCopied ? '已复制' : '复制内容'" placement="left">
+        <Button
+          size="small"
+          type="text"
+          class="json-editor__copy-btn"
+          @click="handleCopy"
+        >
+          <template #icon>
+            <CheckOutlined v-if="justCopied" />
+            <CopyOutlined v-else />
+          </template>
+        </Button>
+      </Tooltip>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .json-editor {
+  position: relative;
   height: 100%;
   overflow: hidden;
 }
@@ -92,5 +133,30 @@ function handleUpdate(value: string) {
 
 .json-editor :deep(.cm-scroller) {
   overflow: auto !important;
+}
+
+.json-editor__copy {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity var(--duration-fast, 150ms) var(--ease-out-expo, ease);
+}
+
+.json-editor.has-copy:hover .json-editor__copy,
+.json-editor__copy:focus-within {
+  opacity: 1;
+}
+
+.json-editor__copy-btn {
+  background: var(--card-bg, rgba(255, 255, 255, 0.9));
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.json-editor__copy-btn:hover {
+  background: var(--hover-bg, rgba(0, 0, 0, 0.04));
 }
 </style>

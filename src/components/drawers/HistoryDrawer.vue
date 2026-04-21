@@ -32,7 +32,7 @@ import type { HistoryItem } from '../../types';
 import JsonEditor from '../JsonEditor.vue';
 
 const { Search: InputSearch } = Input;
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const props = defineProps<{
   open: boolean;
@@ -174,37 +174,101 @@ function truncateText(text: string, maxLength: number = 100): string {
   return text.slice(0, maxLength) + '...';
 }
 
-/**
- * 构建 System Prompt + User Prompt 的组合文本
- * 用于在 CodeMirror 中展示完整的 prompt 内容
- */
-function buildPromptContent(item: HistoryItem): string {
-  const parts: string[] = [];
-  
-  // System Prompt
-  if (item.requestSnapshot.systemPrompt) {
-    parts.push('### System Prompt ###');
-    parts.push(item.requestSnapshot.systemPrompt);
+type MessageRole = 'system' | 'user' | 'assistant' | 'tool' | 'other';
+
+interface NormalizedMessage {
+  role: MessageRole;
+  content: string;
+}
+
+// systemPrompt 是独立字段；messages[] 只装 user/assistant 对话流。
+// 只要 systemPrompt 非空，就始终作为首条——除非 messages 里已有同名 role（去重）。
+function extractMessages(item: HistoryItem): NormalizedMessage[] {
+  const snap = item.requestSnapshot;
+  const result: NormalizedMessage[] = [];
+  const messages = Array.isArray(snap.messages) ? snap.messages : null;
+
+  const hasSystemInMessages = messages?.some(
+    (m) => (m as { role?: string }).role === 'system'
+  ) ?? false;
+  if (snap.systemPrompt && !hasSystemInMessages) {
+    result.push({ role: 'system', content: snap.systemPrompt });
   }
-  
-  // User Prompt(s)
-  if (Array.isArray(item.requestSnapshot.userPrompts) && item.requestSnapshot.userPrompts.length) {
-    parts.push('');
-    parts.push('### User Prompt ###');
-    parts.push(item.requestSnapshot.userPrompts.join('\n\n'));
-  } else if (Array.isArray(item.requestSnapshot.messages) && item.requestSnapshot.messages.length) {
-    const userMessages = item.requestSnapshot.messages
-      .filter(m => (m as { role?: string }).role === 'user')
-      .map(m => (m as { content?: string }).content || '')
-      .filter(Boolean);
-    if (userMessages.length) {
-      parts.push('');
-      parts.push('### User Prompt ###');
-      parts.push(userMessages.join('\n\n'));
+
+  if (messages && messages.length) {
+    for (const m of messages) {
+      const raw = m as { role?: string; content?: string };
+      const content = raw.content ?? '';
+      if (!content) continue;
+      result.push({ role: normalizeRole(raw.role), content });
+    }
+    return result;
+  }
+
+  if (Array.isArray(snap.userPrompts)) {
+    for (const text of snap.userPrompts) {
+      if (text) result.push({ role: 'user', content: text });
     }
   }
-  
-  return parts.join('\n');
+  return result;
+}
+
+interface NormalizedOutput {
+  label: string;
+  content: string;
+  tagColor: string;
+}
+
+function extractOutputs(item: HistoryItem): NormalizedOutput[] {
+  const snap = item.responseSnapshot;
+  const result: NormalizedOutput[] = [];
+  if (snap.thinking) {
+    result.push({ label: 'Thinking', content: snap.thinking, tagColor: 'cyan' });
+  }
+  if (snap.outputText) {
+    result.push({ label: 'Output', content: snap.outputText, tagColor: 'green' });
+  }
+  return result;
+}
+
+function outputPanelKey(itemId: string, idx: number): string {
+  return `${itemId}::out::${idx}`;
+}
+
+function normalizeRole(role: string | undefined): MessageRole {
+  switch (role) {
+    case 'system':
+    case 'user':
+    case 'assistant':
+    case 'tool':
+      return role;
+    default:
+      return 'other';
+  }
+}
+
+function roleLabel(role: MessageRole): string {
+  switch (role) {
+    case 'system': return 'System';
+    case 'user': return 'User';
+    case 'assistant': return 'Assistant';
+    case 'tool': return 'Tool';
+    default: return 'Other';
+  }
+}
+
+function roleColor(role: MessageRole): string {
+  switch (role) {
+    case 'system': return 'purple';
+    case 'user': return 'blue';
+    case 'assistant': return 'green';
+    case 'tool': return 'orange';
+    default: return 'default';
+  }
+}
+
+function messagePanelKey(itemId: string, idx: number): string {
+  return `${itemId}::msg::${idx}`;
 }
 
 /**
@@ -240,7 +304,7 @@ function getDisplayTitle(item: HistoryItem): string {
     :open="props.open"
     title="运行历史"
     placement="right"
-    :width="480"
+    width="50vw"
     class="history-drawer"
     @close="handleClose"
   >
@@ -327,23 +391,49 @@ function getDisplayTitle(item: HistoryItem): string {
                 </div>
               </div>
               
-              <Collapse 
+              <Collapse
                 :activeKey="expandedIds.has(item.id) ? [item.id] : []"
                 :bordered="false"
                 class="item-details"
               >
                 <Collapse.Panel :key="item.id" :show-arrow="false">
-                  <!-- Prompt 内容 (System + User) -->
+                  <!-- Prompt 内容：每条 message 独立折叠 + 独立 CodeMirror + 复制 -->
                   <div class="detail-section">
                     <Text type="secondary" class="detail-label">Prompt 内容</Text>
-                    <div class="prompt-editor-wrapper">
-                      <JsonEditor
-                        :model-value="buildPromptContent(item)"
-                        :readonly="true"
-                        language="text"
-                        placeholder="无 Prompt 内容"
-                      />
-                    </div>
+                    <Collapse
+                      v-if="extractMessages(item).length"
+                      :bordered="false"
+                      class="messages-collapse"
+                    >
+                      <Collapse.Panel
+                        v-for="(msg, idx) in extractMessages(item)"
+                        :key="messagePanelKey(item.id, idx)"
+                      >
+                        <template #header>
+                          <div class="message-header">
+                            <Tag :color="roleColor(msg.role)" class="message-role-tag">
+                              {{ roleLabel(msg.role) }}
+                            </Tag>
+                            <Text type="secondary" class="message-preview">
+                              {{ truncateText(msg.content, 50) }}
+                            </Text>
+                          </div>
+                        </template>
+                        <div class="message-editor-wrapper">
+                          <JsonEditor
+                            :model-value="msg.content"
+                            language="text"
+                            :copyable="true"
+                          />
+                        </div>
+                      </Collapse.Panel>
+                    </Collapse>
+                    <Empty
+                      v-else
+                      :image="null"
+                      description="无 Prompt 内容"
+                      class="messages-empty"
+                    />
                   </div>
                   
                   <!-- Tools 定义 (默认折叠) -->
@@ -368,15 +458,43 @@ function getDisplayTitle(item: HistoryItem): string {
                     </Collapse>
                   </div>
                   
-                  <!-- 输出预览 -->
+                  <!-- 输出预览：Output/Thinking 各自独立折叠 + CodeMirror + 复制 -->
                   <div class="detail-section">
                     <Text type="secondary" class="detail-label">输出预览</Text>
-                    <Paragraph 
-                      class="output-preview"
-                      :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }"
+                    <Collapse
+                      v-if="extractOutputs(item).length"
+                      :bordered="false"
+                      class="messages-collapse"
                     >
-                      {{ item.responseSnapshot.outputText }}
-                    </Paragraph>
+                      <Collapse.Panel
+                        v-for="(out, idx) in extractOutputs(item)"
+                        :key="outputPanelKey(item.id, idx)"
+                      >
+                        <template #header>
+                          <div class="message-header">
+                            <Tag :color="out.tagColor" class="message-role-tag">
+                              {{ out.label }}
+                            </Tag>
+                            <Text type="secondary" class="message-preview">
+                              {{ truncateText(out.content, 50) }}
+                            </Text>
+                          </div>
+                        </template>
+                        <div class="message-editor-wrapper">
+                          <JsonEditor
+                            :model-value="out.content"
+                            language="text"
+                            :copyable="true"
+                          />
+                        </div>
+                      </Collapse.Panel>
+                    </Collapse>
+                    <Empty
+                      v-else
+                      :image="null"
+                      description="无输出内容"
+                      class="messages-empty"
+                    />
                   </div>
                   
                   <div class="item-actions">
@@ -538,22 +656,59 @@ function getDisplayTitle(item: HistoryItem): string {
   margin-bottom: 4px;
 }
 
-.output-preview {
-  background: var(--code-bg);
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
+.messages-collapse {
+  background: transparent !important;
+  margin-top: 4px;
 }
 
-.prompt-editor-wrapper {
-  height: 160px;
+.messages-collapse :deep(.ant-collapse-item) {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.messages-collapse :deep(.ant-collapse-item:last-child) {
+  border-bottom: none;
+}
+
+.messages-collapse :deep(.ant-collapse-header) {
+  padding: 8px 12px !important;
+  align-items: center !important;
+}
+
+.messages-collapse :deep(.ant-collapse-content-box) {
+  padding: 0 12px 12px !important;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.message-role-tag {
+  flex-shrink: 0;
+  margin-right: 0 !important;
+}
+
+.message-preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.message-editor-wrapper {
+  height: 220px;
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--border-color);
+}
+
+.messages-empty {
+  margin: 8px 0 !important;
 }
 
 .tools-collapse {
