@@ -26,6 +26,7 @@ import {
   migrateToProjectNamespace,
 } from './core/storage';
 import { useProjectManager } from './composables/useProjectManager';
+import { useModals } from './composables/useModals';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
@@ -70,13 +71,8 @@ const providerProfiles = ref<ProviderProfile[]>([]);
 const historyItems = ref<HistoryItem[]>([]);
 const gatewayProviders = ref<any[]>([]);
 
-// 模态框状态
-const showHistory = ref(false);
-const showProviderManager = ref(false);
-const showVarsModal = ref(false);
-const showParamsModal = ref(false);
-const showToolsModal = ref(false);
-const showCurlImportModal = ref(false);
+// 模态框状态（集中管理，见 composables/useModals.ts）
+const { modals } = useModals();
 
 // 高亮 Slot 状态（用于导入动画）
 const highlightedSlotId = ref<string | null>(null);
@@ -1757,15 +1753,15 @@ watch(
       :gateway-config="gatewayConfig"
       @update:selected-project="switchProject"
       @toggle-theme="toggleTheme"
-      @open-provider="showProviderManager = true"
-      @open-params="showParamsModal = true"
-      @open-tools="showToolsModal = true"
-      @open-vars="showVarsModal = true"
-      @open-history="showHistory = true"
+      @open-provider="modals.providerManager = true"
+      @open-params="modals.params = true"
+      @open-tools="modals.tools = true"
+      @open-vars="modals.vars = true"
+      @open-history="modals.history = true"
       @add-slot="addSlot()"
       @add-message="addUserMessage()"
       @stop-all="stopAllSlots"
-      @import-curl="showCurlImportModal = true"
+      @import-curl="modals.curlImport = true"
       @share-project="handleShareProject"
     >
       <template #project-selector>
@@ -1812,41 +1808,41 @@ watch(
     
     <!-- 模态框 -->
     <VarsModal
-      :open="showVarsModal"
+      :open="modals.vars"
       :variables="shared.variables"
-      @update:open="showVarsModal = $event"
+      @update:open="modals.vars = $event"
       @save="handleVarsSave"
     />
     
     <GlobalParamsModal
-      :open="showParamsModal"
+      :open="modals.params"
       :default-params="shared.defaultParams"
-      @update:open="showParamsModal = $event"
+      @update:open="modals.params = $event"
       @save="handleParamsSave"
     />
     
     <ToolsDrawer
-      :open="showToolsModal"
+      :open="modals.tools"
       :tools-definition="shared.toolsDefinition"
       :tool-registry="toolRegistry"
-      @update:open="showToolsModal = $event"
+      @update:open="modals.tools = $event"
       @save-definition="handleToolsSave"
       @save-registry="handleToolRegistrySave"
     />
     
     <!-- cURL 导入弹窗 -->
     <CurlImportModal
-      :open="showCurlImportModal"
+      :open="modals.curlImport"
       :projects="sortedProjects"
       :current-project-id="currentProjectId"
       :provider-profiles="providerProfiles"
-      @update:open="showCurlImportModal = $event"
+      @update:open="modals.curlImport = $event"
       @import="handleCurlImport"
     />
     
     <!-- Provider 管理面板 -->
     <ProviderPanel
-      v-if="showProviderManager"
+      v-if="modals.providerManager"
       :plugins="plugins"
       :provider-profiles="providerProfiles"
       :new-profile="newProfile"
@@ -1862,15 +1858,15 @@ watch(
       :on-save-gateway-config="handleSaveGatewayConfig"
       :on-disconnect-gateway="handleDisconnectGateway"
       :on-import-gateway-providers="handleImportGatewayProviders"
-      @close="showProviderManager = false"
+      @close="modals.providerManager = false"
       @profile-updated="handleGatewayLogout"
     />
     
     <!-- 历史抽屉 -->
     <HistoryDrawer
-      :open="showHistory"
+      :open="modals.history"
       :items="historyItems"
-      @update:open="showHistory = $event"
+      @update:open="modals.history = $event"
       @load="loadHistoryIntoEditor"
       @toggle-star="toggleStar"
       @delete="deleteHistoryItem"
