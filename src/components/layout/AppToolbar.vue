@@ -11,6 +11,7 @@ import {
   BulbFilled,
   AppstoreAddOutlined,
   MessageOutlined,
+  PauseCircleOutlined,
   ImportOutlined,
   MenuOutlined,
   ShareAltOutlined
@@ -20,6 +21,7 @@ const props = defineProps<{
   projectOptions: { id: string; label: string }[];
   selectedProject: string;
   theme: 'light' | 'dark';
+  hasRunningSlots: boolean;
   gatewayConfig?: { enabled: boolean; baseUrl: string; clientId: string } | null;
 }>();
 
@@ -33,6 +35,7 @@ const emit = defineEmits<{
   toggleTheme: [];
   addSlot: [];
   addMessage: [];
+  stopAll: [];
   importCurl: [];
   shareProject: [];
 }>();
@@ -104,6 +107,9 @@ function handleMenuClick(key: string) {
     case 'addMessage':
       emit('addMessage');
       break;
+    case 'stopAll':
+      emit('stopAll');
+      break;
     case 'provider':
       emit('openProvider');
       break;
@@ -163,6 +169,13 @@ function handleMenuClick(key: string) {
           <Button type="primary" class="btn-interactive" @click="emit('addMessage')">
             <template #icon><MessageOutlined /></template>
             添加消息
+          </Button>
+        </Tooltip>
+
+        <Tooltip v-if="props.hasRunningSlots" title="停止所有正在运行的回复">
+          <Button danger class="btn-interactive" @click="emit('stopAll')">
+            <template #icon><PauseCircleOutlined /></template>
+            停止
           </Button>
         </Tooltip>
         
@@ -237,6 +250,10 @@ function handleMenuClick(key: string) {
             <MenuItem key="addMessage">
               <MessageOutlined />
               <span>添加消息</span>
+            </MenuItem>
+            <MenuItem v-if="props.hasRunningSlots" key="stopAll">
+              <PauseCircleOutlined />
+              <span>停止</span>
             </MenuItem>
             <MenuDivider />
             <MenuItem key="provider">

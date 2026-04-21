@@ -104,6 +104,7 @@ export type Slot = {
   systemPrompt: string;
   paramOverride: Record<string, unknown> | null;
   selected: boolean;
+  lastRunId?: string;
   status: 'idle' | 'running' | 'done' | 'error' | 'canceled';
   output: string;
   thinking: string;
