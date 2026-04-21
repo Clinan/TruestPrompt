@@ -28,6 +28,7 @@ import {
 import { useProjectManager } from './composables/useProjectManager';
 import { useModals } from './composables/useModals';
 import { useTheme } from './composables/useTheme';
+import { useEditorPersistence } from './composables/useEditorPersistence';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
@@ -236,14 +237,6 @@ function removeEmptyEntries(obj: Record<string, unknown>) {
   return cleaned;
 }
 
-function coerceNumber(value: unknown, fallback: number) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : fallback;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 const STREAM_UI_YIELD_INTERVAL_MS = 32;
 
 function createAbortError(message = '请求已中止') {
@@ -263,123 +256,16 @@ function yieldToBrowser() {
   });
 }
 
-// 编辑器状态持久化
-type PersistedEditorState = {
-  version: 4;
-  shared: SharedState;
-  slots: Array<Pick<Slot, 'id' | 'providerProfileId' | 'pluginId' | 'modelId' | 'systemPrompt' | 'paramOverride'>>;
-  toolRegistry?: ToolRegistry;
-};
-
-function serializeEditorState(): PersistedEditorState {
-  return {
-    version: 4,
-    shared: {
-      userPrompts: shared.userPrompts.map((p) => ({ 
-        id: p.id, 
-        role: p.role, 
-        text: p.text,
-        images: p.images // 保存图片数据
-      })),
-      toolsDefinition: shared.toolsDefinition,
-      variables: shared.variables.map((v) => ({ id: v.id, key: v.key, value: v.value })),
-      defaultParams: { ...shared.defaultParams },
-      enableSuggestions: shared.enableSuggestions,
-      streamOutput: shared.streamOutput
-    },
-    slots: slots.value.map((slot) => ({
-      id: slot.id,
-      providerProfileId: slot.providerProfileId,
-      pluginId: slot.pluginId,
-      modelId: slot.modelId,
-      systemPrompt: slot.systemPrompt,
-      paramOverride: slot.paramOverride
-    })),
-    toolRegistry: toolRegistry.value
-  };
-}
-
-function loadEditorState() {
-  let raw: string | null = null;
-  try {
-    raw = getItem(STORAGE_KEYS.EDITOR_STATE);
-  } catch (err) {
-    console.warn('无法读取本地编辑器状态（localStorage 不可用）。', err);
-    return;
-  }
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw) as Partial<PersistedEditorState>;
-    if (![1, 2, 3, 4].includes((parsed as PersistedEditorState).version) || !parsed.shared) return;
-
-    const restoredUserPrompts = Array.isArray(parsed.shared.userPrompts)
-      ? parsed.shared.userPrompts
-          .filter((p): p is UserPromptPreset => Boolean(p && typeof (p as UserPromptPreset).id === 'string'))
-          .map((p) => ({
-            id: p.id,
-            role: (p.role === 'system' || p.role === 'assistant' ? p.role : 'user') as 'user' | 'system' | 'assistant',
-            text: typeof p.text === 'string' ? p.text : '',
-            images: Array.isArray(p.images) ? p.images : undefined // 恢复图片数据
-          }))
-      : [];
-
-    shared.userPrompts = restoredUserPrompts.length ? restoredUserPrompts : [initialUserPrompt];
-
-    if (typeof parsed.shared.toolsDefinition === 'string') shared.toolsDefinition = parsed.shared.toolsDefinition;
-    if (Array.isArray((parsed.shared as Partial<SharedState>).variables)) {
-      const restoredVariables = (parsed.shared as Partial<SharedState>).variables!
-        .filter((v) => v && typeof v.id === 'string')
-        .map((v, index) => ({
-          id: v.id,
-          key: typeof v.key === 'string' ? v.key : `VAR_${index + 1}`,
-          value: typeof v.value === 'string' ? v.value : ''
-        }));
-      if (restoredVariables.length) {
-        shared.variables = restoredVariables;
-      }
-    }
-    if (parsed.shared.defaultParams) {
-      shared.defaultParams = {
-        temperature: coerceNumber(parsed.shared.defaultParams.temperature, defaultSharedParams.temperature),
-        top_p: coerceNumber(parsed.shared.defaultParams.top_p, defaultSharedParams.top_p),
-        max_tokens: coerceNumber(parsed.shared.defaultParams.max_tokens, defaultSharedParams.max_tokens)
-      };
-    }
-    if (typeof parsed.shared.enableSuggestions === 'boolean') shared.enableSuggestions = parsed.shared.enableSuggestions;
-    if (typeof parsed.shared.streamOutput === 'boolean') shared.streamOutput = parsed.shared.streamOutput;
-
-    if (Array.isArray(parsed.slots) && parsed.slots.length) {
-      const allowedProfileIds = new Set(providerProfiles.value.map((p) => p.id));
-      slots.value = parsed.slots.map((slot) => ({
-        ...createSlot(),
-        id: typeof slot.id === 'string' ? slot.id : newId(),
-        providerProfileId:
-          typeof slot.providerProfileId === 'string' && allowedProfileIds.has(slot.providerProfileId)
-            ? slot.providerProfileId
-            : null,
-        pluginId: typeof slot.pluginId === 'string' ? slot.pluginId : plugins[0].id,
-        modelId: typeof slot.modelId === 'string' ? slot.modelId : 'gpt-4o-mini',
-        systemPrompt: typeof slot.systemPrompt === 'string' ? slot.systemPrompt : '',
-        paramOverride: (slot.paramOverride as Record<string, unknown> | null) ?? null
-      }));
-    }
-    
-    // 加载工具注册表
-    if (parsed.toolRegistry && typeof parsed.toolRegistry === 'object') {
-      toolRegistry.value = parsed.toolRegistry as ToolRegistry;
-    }
-  } catch (err) {
-    console.warn('加载本地编辑器状态失败，将忽略并使用默认值。', err);
-  }
-}
-
-function saveEditorState() {
-  try {
-    setItem(STORAGE_KEYS.EDITOR_STATE, JSON.stringify(serializeEditorState()));
-  } catch (err) {
-    console.warn('保存本地编辑器状态失败。', err);
-  }
-}
+// 编辑器状态持久化（见 composables/useEditorPersistence.ts）
+const { hasEditedSinceLoad, loadEditorState, saveEditorState } = useEditorPersistence({
+  slots,
+  shared,
+  toolRegistry,
+  providerProfiles,
+  createSlot,
+  initialUserPrompt,
+  defaultSharedParams,
+});
 
 // Provider 管理
 function loadProfiles() {
@@ -1519,26 +1405,6 @@ function handleGlobalKeydown(event: KeyboardEvent) {
 }
 
 // 页面离开提示
-const hasEditedSinceLoad = ref(false);
-const loadedEditorSignature = ref<string | null>(null);
-const editorSignature = computed(() => JSON.stringify(serializeEditorState()));
-
-watch(
-  editorSignature,
-  (signature) => {
-    if (loadedEditorSignature.value === null) {
-      loadedEditorSignature.value = signature;
-      saveEditorState();
-      return;
-    }
-    if (signature !== loadedEditorSignature.value) {
-      hasEditedSinceLoad.value = true;
-      saveEditorState();
-    }
-  },
-  { flush: 'post' }
-);
-
 function handleBeforeUnload(event: BeforeUnloadEvent) {
   if (!hasEditedSinceLoad.value) return;
   event.preventDefault();
