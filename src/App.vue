@@ -27,6 +27,7 @@ import {
 } from './core/storage';
 import { useProjectManager } from './composables/useProjectManager';
 import { useModals } from './composables/useModals';
+import { useTheme } from './composables/useTheme';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
@@ -77,9 +78,8 @@ const { modals } = useModals();
 // 高亮 Slot 状态（用于导入动画）
 const highlightedSlotId = ref<string | null>(null);
 
-// 主题
-const themeStorageKey = 'truestprompt-theme';
-const theme = ref<'light' | 'dark'>('light');
+// 主题（见 composables/useTheme.ts）
+const { theme, toggleTheme } = useTheme();
 const useCurlPlaceholder = ref(true);
 
 // 项目管理
@@ -191,33 +191,6 @@ const refreshingModelsMap = computed(() => {
   });
   return map;
 });
-
-// 主题相关
-function applyTheme(mode: 'light' | 'dark') {
-  document.documentElement.setAttribute('data-theme', mode);
-  try {
-    localStorage.setItem(themeStorageKey, mode);
-  } catch (err) {
-    console.warn('无法保存主题偏好：', err);
-  }
-}
-
-if (typeof window !== 'undefined') {
-  let storedTheme: 'light' | 'dark' | null = null;
-  try {
-    storedTheme = localStorage.getItem(themeStorageKey) as 'light' | 'dark' | null;
-  } catch (err) {
-    console.warn('无法读取主题偏好（localStorage 不可用）。', err);
-  }
-  theme.value = storedTheme === 'dark' ? 'dark' : 'light';
-  applyTheme(theme.value);
-}
-
-watch(theme, (mode) => applyTheme(mode));
-
-function toggleTheme() {
-  theme.value = theme.value === 'light' ? 'dark' : 'light';
-}
 
 // 确认对话框
 function openConfirmDialog(options: {
