@@ -193,3 +193,11 @@ export type ProjectMetadata = {
   // 网关配置（可选，存在且 enabled=true 表示网关模式）
   gateway?: GatewayConfig;
 };
+
+// 默认项目：不可删除，作为系统保底项目
+export const DEFAULT_PROJECT: ProjectMetadata = {
+  id: 'default',
+  name: 'Default Project',
+  createdAt: 0,
+  updatedAt: 0,
+};

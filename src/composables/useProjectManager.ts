@@ -1,5 +1,5 @@
 import { ref, computed, watch, type Ref, type ComputedRef } from 'vue';
-import type { ProjectMetadata, GatewayConfig } from '../core/types';
+import { DEFAULT_PROJECT, type ProjectMetadata, type GatewayConfig } from '../core/types';
 import { newId } from '../core/utils/id';
 import {
   getItem,
@@ -8,14 +8,6 @@ import {
   clearProjectData,
   STORAGE_KEYS,
 } from '../core/storage';
-
-// Default project that cannot be deleted
-export const DEFAULT_PROJECT: ProjectMetadata = {
-  id: 'default',
-  name: 'Default Project',
-  createdAt: 0,
-  updatedAt: 0,
-};
 
 // Project name validation
 const MAX_PROJECT_NAME_LENGTH = 50;

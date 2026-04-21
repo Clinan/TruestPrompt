@@ -11,7 +11,8 @@ import {
   CloseOutlined,
 } from '@ant-design/icons-vue';
 import type { ProjectMetadata } from '../../types';
-import { DEFAULT_PROJECT, validateProjectName } from '../../composables/useProjectManager';
+import { DEFAULT_PROJECT } from '../../core/types';
+import { validateProjectName } from '../../composables/useProjectManager';
 
 const props = defineProps<{
   projects: ProjectMetadata[];

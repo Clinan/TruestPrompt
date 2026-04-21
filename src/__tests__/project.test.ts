@@ -17,10 +17,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as fc from 'fast-check';
 import {
   useProjectManager,
-  DEFAULT_PROJECT,
   isValidProjectName,
   validateProjectName,
 } from '../composables/useProjectManager';
+import { DEFAULT_PROJECT } from '../core/types';
 import { setCurrentProjectId } from '../core/storage';
 
 // Mock localStorage
