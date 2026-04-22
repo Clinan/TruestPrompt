@@ -29,9 +29,10 @@ import { useProviderProfiles } from './composables/useProviderProfiles';
 import { useGatewayAuth } from './composables/useGatewayAuth';
 import { getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { generateShareUrl } from './lib/urlSharing';
-import { executeToolFromRegistry, type ToolRegistry } from './lib/toolExecutor';
+import { type ToolRegistry } from './lib/toolExecutor';
 import { buildPluginRequest } from './lib/requestBuilder';
 import { runChat } from './lib/chatOrchestrator';
+import { runToolCall } from './lib/toolCallRunner';
 import type { ToolCall } from './core/types';
 
 // 新组件导入
@@ -563,72 +564,18 @@ function handleToolRegistrySave(registry: ToolRegistry) {
   saveEditorState();
 }
 
-// 工具执行功能
+// 工具执行（纯逻辑见 lib/toolCallRunner.ts，这里只管 slot 状态回填）
 async function executeToolCall(slotId: string, toolCall: ToolCall) {
-  const slot = slots.value.find(s => s.id === slotId);
+  const slot = slots.value.find((s) => s.id === slotId);
   if (!slot || !toolCall.function?.name) return;
-  
-  const toolName = toolCall.function.name;
-  let args: Record<string, unknown> = {};
-  
-  // 解析参数
-  try {
-    const argsRaw = toolCall.function.arguments;
-    if (typeof argsRaw === 'string') {
-      args = JSON.parse(argsRaw);
-    } else if (typeof argsRaw === 'object' && argsRaw !== null) {
-      args = argsRaw as Record<string, unknown>;
-    }
-  } catch (err) {
-    console.error('解析工具参数失败：', err);
-    // 更新工具调用状态为错误
-    updateToolCallExecution(slotId, toolCall, {
-      status: 'error',
-      error: '参数解析失败：' + (err instanceof Error ? err.message : String(err))
-    });
-    return;
+
+  updateToolCallExecution(slotId, toolCall, { status: 'running' });
+
+  const execution = await runToolCall(toolCall, toolRegistry.value);
+  if (execution.status === 'error') {
+    console.error('工具执行失败：', execution.error);
   }
-  
-  // 更新状态为执行中
-  updateToolCallExecution(slotId, toolCall, {
-    status: 'running'
-  });
-  
-  try {
-    // 执行工具
-    const result = await executeToolFromRegistry(toolName, args, toolRegistry.value);
-    
-    // 更新状态为成功
-    updateToolCallExecution(slotId, toolCall, {
-      status: 'success',
-      result,
-      executedAt: Date.now()
-    });
-  } catch (err) {
-    console.error('工具执行失败：', err);
-    
-    // 检查是否有详细的错误信息
-    let errorMessage = err instanceof Error ? err.message : String(err);
-    let errorDetails: any = null;
-    
-    if (err instanceof Error && (err as any).details) {
-      errorDetails = (err as any).details;
-      // 构造包含详细信息的错误消息
-      errorMessage = `${errorMessage}\n\n状态码: ${errorDetails.status}\nURL: ${errorDetails.url}\n方法: ${errorDetails.method}`;
-      
-      if (errorDetails.response) {
-        errorMessage += `\n\n响应内容:\n${typeof errorDetails.response === 'string' ? errorDetails.response : JSON.stringify(errorDetails.response, null, 2)}`;
-      }
-    }
-    console.log('错误详情对象：', errorDetails);
-    
-    // 更新状态为错误
-    updateToolCallExecution(slotId, toolCall, {
-      status: 'error',
-      error: errorMessage,
-      result: errorDetails // 直接保存errorDetails，即使是null也保存
-    });
-  }
+  updateToolCallExecution(slotId, toolCall, execution);
 }
 
 // 更新工具调用的执行状态
