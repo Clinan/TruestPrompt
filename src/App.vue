@@ -31,6 +31,7 @@ import { getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { generateShareUrl } from './lib/urlSharing';
 import { executeToolFromRegistry, type ToolRegistry } from './lib/toolExecutor';
 import { buildPluginRequest } from './lib/requestBuilder';
+import { runChat } from './lib/chatOrchestrator';
 import type { ToolCall } from './core/types';
 
 // 新组件导入
@@ -243,25 +244,6 @@ function closeCodeDialog() {
   codeDialogSlotId.value = null;
 }
 
-const STREAM_UI_YIELD_INTERVAL_MS = 32;
-
-function createAbortError(message = '请求已中止') {
-  return new DOMException(message, 'AbortError');
-}
-
-function isAbortError(err: unknown) {
-  return (
-    (err instanceof DOMException && err.name === 'AbortError') ||
-    (typeof err === 'object' && err !== null && 'name' in err && (err as { name?: string }).name === 'AbortError')
-  );
-}
-
-function yieldToBrowser() {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, 0);
-  });
-}
-
 // 编辑器状态持久化（见 composables/useEditorPersistence.ts）
 const { hasEditedSinceLoad, loadEditorState, saveEditorState } = useEditorPersistence({
   slots,
@@ -468,19 +450,14 @@ async function runSlot(slot: Slot) {
     alert('请选择 Provider Profile');
     return;
   }
-  
-  // 获取有效的 API Key（网关 Provider 使用 access_token，本地 Provider 使用 apiKey）
+
   const effectiveApiKey = getEffectiveApiKey(profile, currentProjectId.value);
-  
-  // 检查网关 Provider 是否已登录
   if (profile.gatewayProviderId && !effectiveApiKey) {
     alert('网关未登录，请先登录后再运行');
     return;
   }
-  
-  // 创建带有有效 apiKey 的 profile 副本
   const effectiveProfile = { ...profile, apiKey: effectiveApiKey };
-  
+
   const request = buildRequest(slot);
   const runId = newId();
   const controller = new AbortController();
@@ -493,18 +470,16 @@ async function runSlot(slot: Slot) {
   slot.metrics = { ttfbMs: null, totalMs: null };
   const start = performance.now();
   let firstChunkAt: number | null = null;
-  let canceled = false;
-  let lastUiYieldAt = start;
 
   const isCurrentRun = () => slot.lastRunId === runId;
-  try {
-    for await (const chunk of plugin.invokeChat(effectiveProfile, request, {
-      stream: request.stream,
-      signal: controller.signal
-    })) {
-      if (!isCurrentRun() || controller.signal.aborted) {
-        throw createAbortError();
-      }
+
+  const result = await runChat({
+    plugin,
+    profile: effectiveProfile,
+    request,
+    signal: controller.signal,
+    isActive: isCurrentRun,
+    onChunk: (chunk) => {
       if (firstChunkAt === null) {
         firstChunkAt = performance.now();
         if (isCurrentRun()) {
@@ -520,68 +495,49 @@ async function runSlot(slot: Slot) {
       } else if (chunk.type === 'usage') {
         slot.metrics.tokens = chunk.tokens;
       }
+    },
+  });
 
-      const now = performance.now();
-      if (now - lastUiYieldAt >= STREAM_UI_YIELD_INTERVAL_MS) {
-        await yieldToBrowser();
-        lastUiYieldAt = performance.now();
-        if (!isCurrentRun() || controller.signal.aborted) {
-          throw createAbortError();
-        }
-      }
-    }
-    if (controller.signal.aborted) {
-      throw createAbortError();
-    }
-    if (isCurrentRun()) {
+  if (isCurrentRun()) {
+    if (result.status === 'done') {
       slot.status = 'done';
-    }
-  } catch (err) {
-    const isAbort = isAbortError(err);
-    if (!isCurrentRun()) {
-      canceled = true;
-      return;
-    }
-    if (isAbort) {
-      canceled = true;
+    } else if (result.status === 'canceled') {
       slot.status = 'canceled';
       if (!slot.output.trim() || slot.output === '正在停止...') {
         slot.output = '已中止';
       }
     } else {
-      console.error(err);
+      console.error(result.error);
       slot.status = 'error';
-      slot.output = err instanceof Error ? err.message : String(err);
+      slot.output = result.error instanceof Error ? result.error.message : String(result.error);
       slot.toolCalls = null;
     }
-  } finally {
-    if (isCurrentRun()) {
-      slot.metrics.totalMs = performance.now() - start;
-    }
+    slot.metrics.totalMs = performance.now() - start;
+  }
 
-    const activeRun = abortControllersBySlotId.get(slot.id);
-    if (activeRun?.runId === runId) {
-      abortControllersBySlotId.delete(slot.id);
-    }
+  const activeRun = abortControllersBySlotId.get(slot.id);
+  if (activeRun?.runId === runId) {
+    abortControllersBySlotId.delete(slot.id);
+  }
 
-    if (isCurrentRun() && !canceled) {
-      const historyItem: HistoryItem = {
-        id: newId(),
-        createdAt: Date.now(),
-        star: false,
-        title: `Run ${new Date().toLocaleString()}`,
-        providerProfileSnapshot: { ...profile },
-        requestSnapshot: { ...request, systemPrompt: request.systemPrompt },
-        responseSnapshot: {
-          outputText: slot.output,
-          thinking: slot.thinking || undefined,
-          toolCalls: slot.toolCalls || undefined,
-          usage: slot.metrics.tokens,
-          metrics: { ttfbMs: slot.metrics.ttfbMs, totalMs: slot.metrics.totalMs }
-        }
-      };
-      appendHistoryItem(historyItem);
-    }
+  // 历史写入：成功 或 错误 都写（原逻辑：canceled 不写，其余都写）
+  if (isCurrentRun() && result.status !== 'canceled') {
+    const historyItem: HistoryItem = {
+      id: newId(),
+      createdAt: Date.now(),
+      star: false,
+      title: `Run ${new Date().toLocaleString()}`,
+      providerProfileSnapshot: { ...profile },
+      requestSnapshot: { ...request, systemPrompt: request.systemPrompt },
+      responseSnapshot: {
+        outputText: slot.output,
+        thinking: slot.thinking || undefined,
+        toolCalls: slot.toolCalls || undefined,
+        usage: slot.metrics.tokens,
+        metrics: { ttfbMs: slot.metrics.ttfbMs, totalMs: slot.metrics.totalMs }
+      }
+    };
+    appendHistoryItem(historyItem);
   }
 }
 
