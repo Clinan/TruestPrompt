@@ -17,7 +17,6 @@ import { buildProvidersExportZip, downloadBlob, parseProvidersImportZip } from '
 import {
   getItem,
   setItem,
-  getHistoryStore,
   getModelCacheStore,
   setCurrentProjectId,
   STORAGE_KEYS,
@@ -29,6 +28,7 @@ import { useProjectManager } from './composables/useProjectManager';
 import { useModals } from './composables/useModals';
 import { useTheme } from './composables/useTheme';
 import { useEditorPersistence } from './composables/useEditorPersistence';
+import { useHistory } from './composables/useHistory';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
@@ -70,7 +70,6 @@ const defaultSharedParams = {
 
 // 状态
 const providerProfiles = ref<ProviderProfile[]>([]);
-const historyItems = ref<HistoryItem[]>([]);
 const gatewayProviders = ref<any[]>([]);
 
 // 模态框状态（集中管理，见 composables/useModals.ts）
@@ -117,20 +116,6 @@ const confirmDialogDescription = ref('');
 const confirmDialogTone = ref<'default' | 'danger'>('default');
 const confirmDialogConfirmText = ref('确定');
 let confirmDialogAction: null | (() => void | Promise<void>) = null;
-
-// 历史加载对话框
-const historyLoadOpen = ref(false);
-const historyLoadItem = ref<HistoryItem | null>(null);
-const historyLoadOptions = reactive({
-  provider: true,
-  model: true,
-  systemPrompt: true,
-  params: true,
-  userPrompts: true,
-  tools: true,
-  output: true,
-  metrics: true
-});
 
 // 初始用户消息
 const initialUserPrompt: UserPromptPreset = {
@@ -265,6 +250,29 @@ const { hasEditedSinceLoad, loadEditorState, saveEditorState } = useEditorPersis
   createSlot,
   initialUserPrompt,
   defaultSharedParams,
+});
+
+// 历史管理（见 composables/useHistory.ts）
+const {
+  historyItems,
+  historyLoadOpen,
+  historyLoadItem,
+  historyLoadOptions,
+  loadHistory,
+  appendHistoryItem,
+  toggleStar,
+  deleteHistoryItem,
+  loadHistoryIntoEditor,
+  closeHistoryLoadDialog,
+  applyHistoryLoad,
+} = useHistory({
+  slots,
+  shared,
+  providerProfiles,
+  createSlot,
+  saveProfiles,
+  refreshModelsForSlot,
+  saveEditorState,
 });
 
 // Provider 管理
@@ -702,118 +710,6 @@ function onProviderChange(slot: Slot) {
   saveEditorState();
 }
 
-// 历史管理
-async function loadHistory() {
-  const historyStore = getHistoryStore();
-  const items: HistoryItem[] = (await historyStore.getItem('items')) || [];
-  historyItems.value = items.sort((a, b) => b.createdAt - a.createdAt);
-}
-
-let historyPersistQueue: Promise<void> = Promise.resolve();
-
-function queuePersistHistory(items: HistoryItem[]) {
-  const historyStore = getHistoryStore();
-  const plain = JSON.parse(JSON.stringify(items)) as HistoryItem[];
-  historyPersistQueue = historyPersistQueue
-    .then(() => { historyStore.setItem('items', plain); })
-    .catch((err) => console.warn('保存历史失败。', err));
-  return historyPersistQueue;
-}
-
-function toggleStar(id: string) {
-  historyItems.value = historyItems.value.map((item) =>
-    item.id === id ? { ...item, star: !item.star } : item
-  );
-  queuePersistHistory(historyItems.value);
-}
-
-function deleteHistoryItem(id: string) {
-  historyItems.value = historyItems.value.filter((item) => item.id !== id);
-  queuePersistHistory(historyItems.value);
-}
-
-function loadHistoryIntoEditor(item: HistoryItem) {
-  historyLoadItem.value = item;
-  historyLoadOpen.value = true;
-}
-
-function applyHistoryLoad() {
-  const item = historyLoadItem.value;
-  if (!item) return;
-
-  const targetSlot = slots.value.filter(s => s.selected)[0] || slots.value[0] || createSlot();
-  if (!slots.value.length) slots.value = [targetSlot];
-  targetSlot.toolCalls = null;
-
-  const legacyUserPrompt = (item.requestSnapshot as unknown as { userPrompt?: string }).userPrompt;
-  const userPrompts = Array.isArray(item.requestSnapshot.userPrompts)
-    ? item.requestSnapshot.userPrompts
-    : legacyUserPrompt
-      ? [legacyUserPrompt]
-      : [];
-  const historyMessages =
-    Array.isArray(item.requestSnapshot.messages) && item.requestSnapshot.messages.length
-      ? item.requestSnapshot.messages
-      : userPrompts.map((text) => ({ role: 'user', content: text }));
-
-  if (historyLoadOptions.userPrompts) {
-    shared.userPrompts = historyMessages.length
-      ? historyMessages.map((msg) => ({
-          id: newId(),
-          role: msg.role === 'system' || msg.role === 'assistant' ? msg.role : 'user',
-          text: typeof msg.content === 'string' ? msg.content : ''
-        }))
-      : [{ id: newId(), role: 'user', text: '' }];
-  }
-
-  if (historyLoadOptions.tools) {
-    shared.toolsDefinition = item.requestSnapshot.toolsDefinition;
-  }
-
-  if (historyLoadOptions.provider && item.providerProfileSnapshot) {
-    const snap = item.providerProfileSnapshot;
-    const existing = providerProfiles.value.find((p) => p.id === snap.id);
-    if (!existing) {
-      providerProfiles.value.push({ ...snap });
-      saveProfiles();
-    }
-    targetSlot.providerProfileId = snap.id;
-    targetSlot.pluginId = snap.pluginId;
-    refreshModelsForSlot(targetSlot);
-  }
-
-  if (historyLoadOptions.model) {
-    targetSlot.modelId = item.requestSnapshot.modelId || '';
-  }
-
-  historyLoadOptions.systemPrompt = true;
-  targetSlot.systemPrompt = item.requestSnapshot.systemPrompt || '';
-
-  if (historyLoadOptions.params) {
-    targetSlot.paramOverride = item.requestSnapshot.params ? { ...(item.requestSnapshot.params as Record<string, unknown>) } : null;
-  }
-
-  if (historyLoadOptions.output) {
-    targetSlot.output = item.responseSnapshot.outputText || '';
-    targetSlot.status = targetSlot.output ? 'done' : 'idle';
-    targetSlot.historyId = item.id;
-    targetSlot.toolCalls = item.responseSnapshot.toolCalls ?? null;
-  }
-
-  if (historyLoadOptions.metrics) {
-    targetSlot.metrics = {
-      ...targetSlot.metrics,
-      ttfbMs: item.responseSnapshot.metrics?.ttfbMs ?? null,
-      totalMs: item.responseSnapshot.metrics?.totalMs ?? null,
-      tokens: item.responseSnapshot.usage
-    };
-  }
-
-  historyLoadOpen.value = false;
-  historyLoadItem.value = null;
-  saveEditorState();
-}
-
 // 请求构建
 const RESERVED_REQUEST_PARAM_KEYS = new Set(['tools']);
 
@@ -1085,8 +981,7 @@ async function runSlot(slot: Slot) {
           metrics: { ttfbMs: slot.metrics.ttfbMs, totalMs: slot.metrics.totalMs }
         }
       };
-      historyItems.value = [historyItem, ...historyItems.value];
-      queuePersistHistory(historyItems.value);
+      appendHistoryItem(historyItem);
     }
   }
 }
@@ -1716,7 +1611,7 @@ watch(
       :open="historyLoadOpen"
       :item="historyLoadItem"
       :options="historyLoadOptions"
-      @close="historyLoadOpen = false"
+      @close="closeHistoryLoadDialog"
       @confirm="applyHistoryLoad"
     />
     
