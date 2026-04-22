@@ -1,7 +1,9 @@
 import { ref, type Ref } from 'vue';
-import type { ProviderProfile, Slot } from '../core/types';
+import type { ProviderProfile, Slot, ToolCall } from '../core/types';
 import { plugins } from '../modules/provider/domain/plugins';
 import { newId } from '../core/utils/id';
+import { runToolCall } from '../lib/toolCallRunner';
+import type { ToolRegistry } from '../lib/toolExecutor';
 
 // 为什么：Slot CRUD（创建/复制/删除/更新/provider 切换）和运行期 abort
 // controller 映射原本散在 App.vue 的 ~150 行区间里，每次新增一个 slot
@@ -23,12 +25,13 @@ export type UseSlotStateDeps = {
   refreshModelsForSlot: (slot: Slot) => Promise<void> | void;
   resolvePluginId: (slot: Slot) => string;
   saveEditorState: () => void;
+  toolRegistry: Ref<ToolRegistry>;
 };
 
 export type AbortEntry = { controller: AbortController; runId: string };
 
 export function useSlotState(deps: UseSlotStateDeps) {
-  const { providerProfiles, refreshModelsForSlot, resolvePluginId, saveEditorState } = deps;
+  const { providerProfiles, refreshModelsForSlot, resolvePluginId, saveEditorState, toolRegistry } = deps;
 
   const slots = ref<Slot[]>([]);
   const abortControllersBySlotId = new Map<string, AbortEntry>();
@@ -118,6 +121,45 @@ export function useSlotState(deps: UseSlotStateDeps) {
     saveEditorState();
   }
 
+  // 工具调用执行：纯逻辑委托 lib/toolCallRunner；这里只负责把 execution
+  // 结果回填到对应 slot.toolCalls[i]。与 slot CRUD 同域，故放在 useSlotState。
+  function updateToolCallExecution(
+    slotId: string,
+    toolCall: ToolCall,
+    execution: Partial<ToolCall['execution']>
+  ) {
+    const slot = slots.value.find((s) => s.id === slotId);
+    if (!slot || !slot.toolCalls) return;
+
+    const toolCalls = slot.toolCalls.map((tc) => {
+      if (tc.id === toolCall.id || tc === toolCall) {
+        return {
+          ...tc,
+          execution: {
+            ...tc.execution,
+            ...execution,
+          } as ToolCall['execution'],
+        };
+      }
+      return tc;
+    });
+
+    updateSlot({ ...slot, toolCalls });
+  }
+
+  async function executeToolCall(slotId: string, toolCall: ToolCall) {
+    const slot = slots.value.find((s) => s.id === slotId);
+    if (!slot || !toolCall.function?.name) return;
+
+    updateToolCallExecution(slotId, toolCall, { status: 'running' });
+
+    const execution = await runToolCall(toolCall, toolRegistry.value);
+    if (execution.status === 'error') {
+      console.error('工具执行失败：', execution.error);
+    }
+    updateToolCallExecution(slotId, toolCall, execution);
+  }
+
   return {
     slots,
     abortControllersBySlotId,
@@ -128,5 +170,6 @@ export function useSlotState(deps: UseSlotStateDeps) {
     removeSlot,
     updateSlot,
     onProviderChange,
+    executeToolCall,
   };
 }

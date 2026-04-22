@@ -1,19 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
-import localforage from 'localforage';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type {
-  HistoryItem,
   PluginRequest,
-  ProviderProfile,
   SharedState,
   Slot,
   UserPromptPreset,
-  GatewayConfig
 } from './core/types';
 import { plugins } from './modules/provider/domain/plugins';
 import { newId } from './core/utils/id';
 import {
-  setCurrentProjectId,
   isLocalStorageAvailable,
   enableMemoryFallback,
   migrateToProjectNamespace,
@@ -27,13 +22,13 @@ import { useKeyboardAndWindow } from './composables/useKeyboardAndWindow';
 import { useSlotState } from './composables/useSlotState';
 import { useProviderProfiles } from './composables/useProviderProfiles';
 import { useGatewayAuth } from './composables/useGatewayAuth';
-import { getEffectiveApiKey } from './modules/provider/domain/gateway';
+import { useConfirmDialog } from './composables/useConfirmDialog';
+import { useSlotRunner } from './composables/useSlotRunner';
+import { useCurlImport } from './composables/useCurlImport';
 import { generateShareUrl } from './lib/urlSharing';
+import { copyToClipboardWithFallback } from './lib/clipboard';
 import { type ToolRegistry } from './lib/toolExecutor';
 import { buildPluginRequest } from './lib/requestBuilder';
-import { runChat } from './lib/chatOrchestrator';
-import { runToolCall } from './lib/toolCallRunner';
-import type { ToolCall } from './core/types';
 
 // 新组件导入
 import AppToolbar from './components/layout/AppToolbar.vue';
@@ -46,12 +41,9 @@ import GlobalParamsModal from './components/modals/GlobalParamsModal.vue';
 import ToolsDrawer from './modules/provider/components/modals/ToolsDrawer.vue';
 import ProjectSelector from './components/layout/ProjectSelector.vue';
 import CurlImportModal from './modules/provider/components/modals/CurlImportModal.vue';
-import type { ImportResult } from './modules/provider/components/modals/CurlImportModal.vue';
-import { shouldOverwriteSlot } from './lib/curlParser';
 
 // 旧组件（保留兼容）
 import ProviderPanel from './modules/provider/components/ProviderPanel.vue';
-import CodeDialog from './components/CodeDialog.vue';
 import HistoryLoadDialog from './components/HistoryLoadDialog.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
 
@@ -72,12 +64,8 @@ const defaultSharedParams = {
 // 模态框状态（集中管理，见 composables/useModals.ts）
 const { modals } = useModals();
 
-// 高亮 Slot 状态（用于导入动画）
-const highlightedSlotId = ref<string | null>(null);
-
 // 主题（见 composables/useTheme.ts）
 const { theme, toggleTheme } = useTheme();
-const useCurlPlaceholder = ref(true);
 
 // 项目管理
 const projectManager = useProjectManager({
@@ -98,7 +86,7 @@ const projectManager = useProjectManager({
   },
 });
 
-const { projects, currentProjectId, currentProject, sortedProjects, gatewayConfig, createProject, renameProject, deleteProject, switchProject, enableGatewayMode, disableGatewayMode } = projectManager;
+const { projects, currentProjectId, currentProject, sortedProjects, gatewayConfig, createProject, createAndSwitchProject, renameProject, deleteProject, switchProject, enableGatewayMode, disableGatewayMode } = projectManager;
 
 // Provider 状态 + 模型缓存（见 composables/useProviderProfiles.ts）
 const {
@@ -137,19 +125,13 @@ const {
   },
 });
 
-// 代码对话框
-const codeDialogOpen = ref(false);
-const codeDialogTitle = ref('');
-const codeDialogCode = ref('');
-const codeDialogSlotId = ref<string | null>(null);
-
-// 确认对话框
-const confirmDialogOpen = ref(false);
-const confirmDialogTitle = ref('');
-const confirmDialogDescription = ref('');
-const confirmDialogTone = ref<'default' | 'danger'>('default');
-const confirmDialogConfirmText = ref('确定');
-let confirmDialogAction: null | (() => void | Promise<void>) = null;
+// 确认对话框（见 composables/useConfirmDialog.ts）
+const {
+  state: confirmDialog,
+  openConfirmDialog,
+  closeConfirmDialog,
+  confirmDialogConfirm,
+} = useConfirmDialog();
 
 // 初始用户消息
 const initialUserPrompt: UserPromptPreset = {
@@ -182,10 +164,12 @@ const {
   removeSlot,
   updateSlot,
   onProviderChange,
+  executeToolCall,
 } = useSlotState({
   providerProfiles,
   refreshModelsForSlot,
   resolvePluginId,
+  toolRegistry,
   // thunk：saveEditorState 在 useEditorPersistence 里才定义，
   // 此处先用闭包捕获，运行期（用户交互）才读取
   saveEditorState: () => saveEditorState(),
@@ -212,38 +196,6 @@ const refreshingModelsMap = computed(() => {
   });
   return map;
 });
-
-// 确认对话框
-function openConfirmDialog(options: {
-  title: string;
-  description?: string;
-  tone?: 'default' | 'danger';
-  confirmText?: string;
-  action: () => void | Promise<void>;
-}) {
-  confirmDialogTitle.value = options.title;
-  confirmDialogDescription.value = options.description || '';
-  confirmDialogTone.value = options.tone || 'default';
-  confirmDialogConfirmText.value = options.confirmText || '确定';
-  confirmDialogAction = options.action;
-  confirmDialogOpen.value = true;
-}
-
-function closeConfirmDialog() {
-  confirmDialogOpen.value = false;
-  confirmDialogAction = null;
-}
-
-async function confirmDialogConfirm() {
-  const action = confirmDialogAction;
-  closeConfirmDialog();
-  await action?.();
-}
-
-function closeCodeDialog() {
-  codeDialogOpen.value = false;
-  codeDialogSlotId.value = null;
-}
 
 // 编辑器状态持久化（见 composables/useEditorPersistence.ts）
 const { hasEditedSinceLoad, loadEditorState, saveEditorState } = useEditorPersistence({
@@ -374,173 +326,31 @@ function buildRequest(slot: Slot): PluginRequest {
   return buildPluginRequest(slot, shared);
 }
 
-// cURL 导出
-function buildCurlSnippet(slot: Slot): { title: string; code: string } | null {
-  const plugin = getPlugin(slot);
-  const profile = getProfile(slot);
-  if (!profile) return null;
-  const request = buildRequest(slot);
-  
-  // 网关 Provider 使用 {{ACCESS_TOKEN}} 占位符
-  // 本地 Provider 根据 useCurlPlaceholder 设置决定是否使用占位符
-  let maskedProfile: typeof profile;
-  if (profile.gatewayProviderId) {
-    // 网关 Provider：始终使用占位符
-    maskedProfile = { ...profile, apiKey: '{{ACCESS_TOKEN}}' };
-  } else {
-    // 本地 Provider：根据设置决定
-    maskedProfile = useCurlPlaceholder.value ? { ...profile, apiKey: '' } : profile;
-  }
-  
-  try {
-    return {
-      title: `cURL（${slot.modelId}）`,
-      code: plugin.buildCurl(maskedProfile, request)
-    };
-  } catch (err) {
-    alert(err instanceof Error ? err.message : String(err));
-    return null;
-  }
-}
-
-async function exportCurl(slot: Slot) {
-  const snippet = buildCurlSnippet(slot);
-  if (!snippet) {
-    alert('请选择 Provider Profile');
-    return;
-  }
-  codeDialogSlotId.value = slot.id;
-  codeDialogTitle.value = snippet.title;
-  codeDialogCode.value = snippet.code;
-  codeDialogOpen.value = true;
-}
-
-watch(useCurlPlaceholder, () => {
-  if (!codeDialogOpen.value || !codeDialogSlotId.value) return;
-  const slot = slots.value.find((item) => item.id === codeDialogSlotId.value);
-  if (!slot) return;
-  const snippet = buildCurlSnippet(slot);
-  if (!snippet) return;
-  codeDialogTitle.value = snippet.title;
-  codeDialogCode.value = snippet.code;
+// Slot 运行引擎（见 composables/useSlotRunner.ts）
+const { runSlot, stopSlot, stopAllSlots } = useSlotRunner({
+  slots,
+  abortControllersBySlotId,
+  currentProjectId,
+  getPlugin,
+  getProfile,
+  buildRequest,
+  appendHistoryItem,
 });
 
-// 运行 Slot
-function stopSlot(slotId: string) {
-  const activeRun = abortControllersBySlotId.get(slotId);
-  if (!activeRun) return;
-  activeRun.controller.abort();
-
-  const slot = slots.value.find((item) => item.id === slotId);
-  if (!slot || slot.lastRunId !== activeRun.runId) return;
-
-  slot.status = 'canceled';
-  if (!slot.output.trim()) {
-    slot.output = '正在停止...';
-  }
-}
-
-function stopAllSlots() {
-  Array.from(abortControllersBySlotId.keys()).forEach((slotId) => stopSlot(slotId));
-}
-
-async function runSlot(slot: Slot) {
-  const plugin = getPlugin(slot);
-  const profile = getProfile(slot);
-  if (!profile) {
-    alert('请选择 Provider Profile');
-    return;
-  }
-
-  const effectiveApiKey = getEffectiveApiKey(profile, currentProjectId.value);
-  if (profile.gatewayProviderId && !effectiveApiKey) {
-    alert('网关未登录，请先登录后再运行');
-    return;
-  }
-  const effectiveProfile = { ...profile, apiKey: effectiveApiKey };
-
-  const request = buildRequest(slot);
-  const runId = newId();
-  const controller = new AbortController();
-  abortControllersBySlotId.set(slot.id, { controller, runId });
-  slot.lastRunId = runId;
-  slot.status = 'running';
-  slot.output = '';
-  slot.thinking = '';
-  slot.toolCalls = null;
-  slot.metrics = { ttfbMs: null, totalMs: null };
-  const start = performance.now();
-  let firstChunkAt: number | null = null;
-
-  const isCurrentRun = () => slot.lastRunId === runId;
-
-  const result = await runChat({
-    plugin,
-    profile: effectiveProfile,
-    request,
-    signal: controller.signal,
-    isActive: isCurrentRun,
-    onChunk: (chunk) => {
-      if (firstChunkAt === null) {
-        firstChunkAt = performance.now();
-        if (isCurrentRun()) {
-          slot.metrics.ttfbMs = firstChunkAt - start;
-        }
-      }
-      if (chunk.type === 'content') {
-        slot.output += chunk.text;
-      } else if (chunk.type === 'thinking') {
-        slot.thinking += chunk.text;
-      } else if (chunk.type === 'tool_calls') {
-        slot.toolCalls = chunk.toolCalls;
-      } else if (chunk.type === 'usage') {
-        slot.metrics.tokens = chunk.tokens;
-      }
-    },
-  });
-
-  if (isCurrentRun()) {
-    if (result.status === 'done') {
-      slot.status = 'done';
-    } else if (result.status === 'canceled') {
-      slot.status = 'canceled';
-      if (!slot.output.trim() || slot.output === '正在停止...') {
-        slot.output = '已中止';
-      }
-    } else {
-      console.error(result.error);
-      slot.status = 'error';
-      slot.output = result.error instanceof Error ? result.error.message : String(result.error);
-      slot.toolCalls = null;
-    }
-    slot.metrics.totalMs = performance.now() - start;
-  }
-
-  const activeRun = abortControllersBySlotId.get(slot.id);
-  if (activeRun?.runId === runId) {
-    abortControllersBySlotId.delete(slot.id);
-  }
-
-  // 历史写入：成功 或 错误 都写（原逻辑：canceled 不写，其余都写）
-  if (isCurrentRun() && result.status !== 'canceled') {
-    const historyItem: HistoryItem = {
-      id: newId(),
-      createdAt: Date.now(),
-      star: false,
-      title: `Run ${new Date().toLocaleString()}`,
-      providerProfileSnapshot: { ...profile },
-      requestSnapshot: { ...request, systemPrompt: request.systemPrompt },
-      responseSnapshot: {
-        outputText: slot.output,
-        thinking: slot.thinking || undefined,
-        toolCalls: slot.toolCalls || undefined,
-        usage: slot.metrics.tokens,
-        metrics: { ttfbMs: slot.metrics.ttfbMs, totalMs: slot.metrics.totalMs }
-      }
-    };
-    appendHistoryItem(historyItem);
-  }
-}
+// cURL 导入（见 composables/useCurlImport.ts）
+const { highlightedSlotId, handleCurlImport } = useCurlImport({
+  slots,
+  shared,
+  providerProfiles,
+  currentProjectId,
+  createSlot,
+  appendSlot,
+  createProject,
+  switchProject,
+  saveProfiles,
+  refreshModelsForSlot,
+  saveEditorState,
+});
 
 // 模态框保存处理
 function handleVarsSave(variables: typeof shared.variables) {
@@ -564,231 +374,33 @@ function handleToolRegistrySave(registry: ToolRegistry) {
   saveEditorState();
 }
 
-// 工具执行（纯逻辑见 lib/toolCallRunner.ts，这里只管 slot 状态回填）
-async function executeToolCall(slotId: string, toolCall: ToolCall) {
-  const slot = slots.value.find((s) => s.id === slotId);
-  if (!slot || !toolCall.function?.name) return;
-
-  updateToolCallExecution(slotId, toolCall, { status: 'running' });
-
-  const execution = await runToolCall(toolCall, toolRegistry.value);
-  if (execution.status === 'error') {
-    console.error('工具执行失败：', execution.error);
-  }
-  updateToolCallExecution(slotId, toolCall, execution);
-}
-
-// 更新工具调用的执行状态
-function updateToolCallExecution(
-  slotId: string,
-  toolCall: ToolCall,
-  execution: Partial<ToolCall['execution']>
-) {
-  const slot = slots.value.find(s => s.id === slotId);
-  if (!slot || !slot.toolCalls) return;
-  
-  const toolCalls = slot.toolCalls.map(tc => {
-    if (tc.id === toolCall.id || (tc === toolCall)) {
-      return {
-        ...tc,
-        execution: {
-          ...tc.execution,
-          ...execution
-        } as ToolCall['execution']
-      };
-    }
-    return tc;
-  });
-  
-  const updatedSlot = { ...slot, toolCalls };
-  updateSlot(updatedSlot);
-}
-
-
 
 // 分享项目处理
-function handleShareProject() {
+async function handleShareProject() {
   if (!gatewayConfig.value?.enabled) {
     alert('只有网关模式的项目才能分享');
     return;
   }
-  
+
   const currentProjectName = currentProject.value?.name;
   if (!currentProjectName) {
     alert('当前项目信息不完整，无法分享');
     return;
   }
-  
+
   try {
     const shareUrl = generateShareUrl({
       gatewayUrl: gatewayConfig.value.baseUrl,
       clientId: gatewayConfig.value.clientId,
       projectName: currentProjectName,
-      autoLogin: true
+      autoLogin: true,
     });
-    
-    // 复制到剪贴板
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      alert('分享链接已复制到剪贴板！\n\n其他用户打开此链接将自动配置网关并跳转登录。');
-    }).catch(() => {
-      // 降级方案：显示链接让用户手动复制
-      const textarea = document.createElement('textarea');
-      textarea.value = shareUrl;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      alert('分享链接已复制到剪贴板！\n\n其他用户打开此链接将自动配置网关并跳转登录。');
-    });
+    await copyToClipboardWithFallback(shareUrl);
+    alert('分享链接已复制到剪贴板！\n\n其他用户打开此链接将自动配置网关并跳转登录。');
   } catch (err) {
     console.error('生成分享链接失败:', err);
     alert(`生成分享链接失败：${err instanceof Error ? err.message : '未知错误'}`);
   }
-}
-
-// 项目管理处理函数
-function handleCreateProject(name: string) {
-  const newProject = createProject(name);
-  if (newProject) {
-    switchProject(newProject.id);
-  }
-}
-
-function handleRenameProject(projectId: string, newName: string) {
-  renameProject(projectId, newName);
-}
-
-async function handleDeleteProject(projectId: string) {
-  await deleteProject(projectId);
-}
-async function handleCurlImport(result: ImportResult) {
-  // 调试日志
-  console.log('[handleCurlImport] result.provider:', result.provider);
-  console.log('[handleCurlImport] result.promptsOnly:', result.promptsOnly);
-
-  // 如果需要创建新项目
-  if (result.isNewProject && result.newProjectName) {
-    const newProject = createProject(result.newProjectName);
-    if (newProject) {
-      await switchProject(newProject.id);
-    }
-  } else if (result.targetProjectId !== currentProjectId.value) {
-    // 切换到目标项目
-    await switchProject(result.targetProjectId);
-  }
-
-  // 只导入提示词模式：不处理 Provider，直接导入消息到当前 Slot
-  if (result.promptsOnly) {
-    // 导入系统提示词到第一个 Slot（如果有）
-    if (result.systemPrompt && slots.value.length > 0) {
-      slots.value[0].systemPrompt = result.systemPrompt;
-    }
-
-    // 导入用户消息
-    if (result.messages && result.messages.length > 0) {
-      shared.userPrompts = result.messages.map(msg => ({
-        id: newId(),
-        role: (msg.role === 'system' || msg.role === 'assistant' ? msg.role : 'user') as 'user' | 'system' | 'assistant',
-        text: msg.content,
-      }));
-    }
-
-    // 高亮第一个 Slot
-    if (slots.value.length > 0) {
-      highlightedSlotId.value = slots.value[0].id;
-      setTimeout(() => {
-        highlightedSlotId.value = null;
-      }, 2000);
-    }
-
-    saveEditorState();
-    return;
-  }
-
-  // 处理 Provider
-  const provider = result.provider;
-  if (!provider) {
-    console.warn('[handleCurlImport] No provider in result');
-    return;
-  }
-  
-  if (provider.isNew) {
-    // 添加新 Provider
-    const newProvider: ProviderProfile = {
-      id: provider.id,
-      name: provider.name,
-      apiKey: provider.apiKey,
-      baseUrl: provider.baseUrl,
-      pluginId: provider.pluginId,
-    };
-    providerProfiles.value.push(newProvider);
-    saveProfiles();
-  } else {
-    // 更新现有 Provider 的 API Key
-    const existingIndex = providerProfiles.value.findIndex(p => p.id === provider.id);
-    if (existingIndex >= 0 && provider.apiKey) {
-      providerProfiles.value[existingIndex] = {
-        ...providerProfiles.value[existingIndex],
-        apiKey: provider.apiKey,
-      };
-      saveProfiles();
-    }
-  }
-
-  // 决定是覆盖还是创建新 Slot
-  const shouldOverwrite = shouldOverwriteSlot(slots.value);
-  let targetSlot: Slot;
-
-  if (shouldOverwrite) {
-    // 覆盖现有 Slot
-    targetSlot = slots.value[0];
-    targetSlot.providerProfileId = provider.id;
-    targetSlot.pluginId = provider.pluginId;
-    targetSlot.modelId = result.modelId || '';
-    if (result.systemPrompt) {
-      targetSlot.systemPrompt = result.systemPrompt;
-    }
-  } else {
-    // 创建新 Slot
-    targetSlot = createSlot();
-    targetSlot.providerProfileId = provider.id;
-    targetSlot.pluginId = provider.pluginId;
-    targetSlot.modelId = result.modelId || '';
-    if (result.systemPrompt) {
-      targetSlot.systemPrompt = result.systemPrompt;
-    }
-    appendSlot(targetSlot, 'curl-import');
-  }
-
-  // 导入用户消息
-  if (result.messages && result.messages.length > 0) {
-    shared.userPrompts = result.messages.map(msg => ({
-      id: newId(),
-      role: (msg.role === 'system' || msg.role === 'assistant' ? msg.role : 'user') as 'user' | 'system' | 'assistant',
-      text: msg.content,
-    }));
-  }
-
-  // 等待 Vue 响应式更新完成
-  await nextTick();
-
-  // 刷新模型列表
-  await refreshModelsForSlot(targetSlot);
-
-  // 设置高亮动画
-  highlightedSlotId.value = targetSlot.id;
-  setTimeout(() => {
-    highlightedSlotId.value = null;
-  }, 2000);
-
-  // 滚动到新 Slot（如果是新创建的）
-  if (!shouldOverwrite) {
-    await nextTick();
-    const slotElement = document.querySelector(`[data-slot-id="${targetSlot.id}"]`);
-    slotElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  saveEditorState();
 }
 
 // 全局键盘 & 窗口事件（Ctrl/Cmd+. 停止 / beforeunload 脏标记提示）
@@ -857,9 +469,9 @@ watch(
           :projects="sortedProjects"
           :current-project-id="currentProjectId"
           @select="switchProject"
-          @create="handleCreateProject"
-          @rename="handleRenameProject"
-          @delete="handleDeleteProject"
+          @create="createAndSwitchProject"
+          @rename="renameProject"
+          @delete="deleteProject"
         />
       </template>
     </AppToolbar>
@@ -969,22 +581,13 @@ watch(
       @confirm="applyHistoryLoad"
     />
     
-    <!-- 代码对话框 -->
-    <CodeDialog
-      :open="codeDialogOpen"
-      :title="codeDialogTitle"
-      :code="codeDialogCode"
-      v-model:usePlaceholder="useCurlPlaceholder"
-      @close="closeCodeDialog"
-    />
-    
     <!-- 确认对话框 -->
     <ConfirmDialog
-      :open="confirmDialogOpen"
-      :title="confirmDialogTitle"
-      :description="confirmDialogDescription"
-      :tone="confirmDialogTone"
-      :confirmText="confirmDialogConfirmText"
+      :open="confirmDialog.open"
+      :title="confirmDialog.title"
+      :description="confirmDialog.description"
+      :tone="confirmDialog.tone"
+      :confirmText="confirmDialog.confirmText"
       @close="closeConfirmDialog"
       @confirm="confirmDialogConfirm"
     />

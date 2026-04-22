@@ -46,6 +46,7 @@ export interface UseProjectManagerReturn {
 
   // Operations
   createProject: (name: string) => ProjectMetadata | null;
+  createAndSwitchProject: (name: string) => Promise<ProjectMetadata | null>;
   renameProject: (projectId: string, newName: string) => boolean;
   deleteProject: (projectId: string) => Promise<boolean>;
   switchProject: (projectId: string) => Promise<void>;
@@ -161,6 +162,14 @@ export function useProjectManager(options: UseProjectManagerOptions = {}): UsePr
     };
 
     projects.value = [...projects.value, newProject];
+    return newProject;
+  }
+
+  async function createAndSwitchProject(name: string): Promise<ProjectMetadata | null> {
+    const newProject = createProject(name);
+    if (newProject) {
+      await switchProject(newProject.id);
+    }
     return newProject;
   }
 
@@ -344,6 +353,7 @@ export function useProjectManager(options: UseProjectManagerOptions = {}): UsePr
     isGatewayMode,
     gatewayConfig,
     createProject,
+    createAndSwitchProject,
     renameProject,
     deleteProject,
     switchProject,
