@@ -26,9 +26,9 @@ import { useHistory } from './composables/useHistory';
 import { useKeyboardAndWindow } from './composables/useKeyboardAndWindow';
 import { useSlotState } from './composables/useSlotState';
 import { useProviderProfiles } from './composables/useProviderProfiles';
-import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
-import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
-import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
+import { useGatewayAuth } from './composables/useGatewayAuth';
+import { getEffectiveApiKey } from './modules/provider/domain/gateway';
+import { generateShareUrl } from './lib/urlSharing';
 import { executeToolFromRegistry, type ToolRegistry } from './lib/toolExecutor';
 import type { ToolCall } from './core/types';
 
@@ -64,8 +64,7 @@ const defaultSharedParams = {
   max_tokens: 8192
 };
 
-// 状态
-const gatewayProviders = ref<any[]>([]);
+// 状态（gatewayProviders 现由 useGatewayAuth 管理）
 
 // 模态框状态（集中管理，见 composables/useModals.ts）
 const { modals } = useModals();
@@ -308,6 +307,36 @@ const {
   saveEditorState,
 });
 
+// Gateway / OAuth 流程（见 composables/useGatewayAuth.ts）
+const {
+  gatewayProviders,
+  handleSaveGatewayConfig,
+  handleDisconnectGateway,
+  handleImportGatewayProviders,
+  handleGatewayLogout,
+  maybeHandleOAuthCallback,
+  maybeHandleAutoGatewayLogin,
+  refreshGatewayTokensIfNeeded,
+} = useGatewayAuth({
+  projects,
+  currentProjectId,
+  gatewayConfig,
+  createProject,
+  switchProject,
+  enableGatewayMode,
+  disableGatewayMode,
+  initializeProjectManager: projectManager.initialize,
+  providerProfiles,
+  slots,
+  createSlot,
+  saveProfiles,
+  refreshModelsForSlot,
+  resolvePluginId,
+  loadProfiles,
+  loadEditorState,
+  saveEditorState,
+});
+
 function requestImportProvidersEncryptedZip(file: File) {
   openConfirmDialog({
     title: '导入 Provider 配置？',
@@ -316,39 +345,6 @@ function requestImportProvidersEncryptedZip(file: File) {
     confirmText: '继续导入',
     action: () => importProvidersEncryptedZip(file)
   });
-}
-
-// Gateway handlers - 网关和本地 Provider 共存模式
-function handleSaveGatewayConfig(config: GatewayConfig) {
-  // 保存网关配置到项目（不清空现有 providers）
-  enableGatewayMode(config);
-}
-
-function handleDisconnectGateway() {
-  // 断开网关连接：清除配置和 token，但保留已导入的 providers
-  disableGatewayMode();
-  gatewayProviders.value = [];
-}
-
-function handleImportGatewayProviders(newProfiles: ProviderProfile[]) {
-  // 导入网关 providers（追加到现有列表）
-  providerProfiles.value = [...providerProfiles.value, ...newProfiles];
-  saveProfiles();
-  
-  // 如果没有 slot，创建一个
-  if (!slots.value.length) {
-    slots.value = [createSlot()];
-  }
-  
-  // 刷新所有 slot 的模型列表
-  Promise.all(slots.value.map(slot => refreshModelsForSlot(slot)));
-  saveEditorState();
-}
-
-// 处理网关登出（仅清除 token，不删除 providers）
-function handleGatewayLogout() {
-  // 清空 gateway providers 缓存
-  gatewayProviders.value = [];
 }
 
 function requestRemoveProfile(profileId: string) {
@@ -399,81 +395,6 @@ function requestRemoveSlot(slotId: string) {
     confirmText: '删除',
     action: () => removeSlot(slotId)
   });
-}
-
-// OAuth 登录成功后自动获取 providers 和 models
-async function handleOAuthSuccess(projectId: string) {
-  try {
-    // 切换到对应的项目
-    if (currentProjectId.value !== projectId) {
-      await projectManager.switchProject(projectId);
-    }
-    
-    // 重新加载项目状态
-    loadProfiles();
-    loadEditorState();
-    
-    // 检查是否有网关配置
-    if (!gatewayConfig.value?.enabled) {
-      return;
-    }
-    
-    // 获取网关 providers
-    const providers = await fetchGatewayProviders(gatewayConfig.value, projectId);
-    
-    if (!providers || providers.length === 0) {
-      return;
-    }
-    
-    // 保存 gatewayProviders 供其他地方使用
-    gatewayProviders.value = providers;
-    
-    // 获取已导入的网关 provider IDs
-    const existingGatewayIds = new Set(
-      providerProfiles.value
-        .filter(p => p.gatewayProviderId)
-        .map(p => p.gatewayProviderId)
-    );
-    
-    // 只导入尚未导入的 providers
-    const newProviders = providers.filter(p => !existingGatewayIds.has(p.id));
-    
-    if (newProviders.length === 0) {
-      // 所有 providers 都已导入，只需刷新模型列表
-      await Promise.all(slots.value.map(slot => refreshModelsForSlot(slot)));
-      return;
-    }
-    
-    // 创建新的 ProviderProfile（追加到现有列表）
-    const newProfiles = newProviders.map(provider => ({
-      ...createProviderFromGateway(provider, gatewayConfig.value!.baseUrl),
-      id: newId(),
-    }));
-    
-    // 追加到现有 providers
-    providerProfiles.value = [...providerProfiles.value, ...newProfiles];
-    saveProfiles();
-    
-    // 如果没有 slot，创建一个
-    if (!slots.value.length) {
-      slots.value = [createSlot()];
-    }
-    
-    // 为第一个 slot 设置默认的 provider
-    if (newProfiles.length > 0 && slots.value.length > 0) {
-      const firstSlot = slots.value[0];
-      firstSlot.providerProfileId = newProfiles[0].id;
-      resolvePluginId(firstSlot);
-    }
-    
-    // 刷新所有 slot 的模型列表
-    await Promise.all(slots.value.map(slot => refreshModelsForSlot(slot)));
-    
-    // 保存编辑器状态
-    saveEditorState();
-  } catch (error) {
-    console.error('自动填充 Providers 失败:', error);
-  }
 }
 
 // 请求构建
@@ -1036,133 +957,20 @@ async function handleCurlImport(result: ImportResult) {
 // 全局键盘 & 窗口事件（Ctrl/Cmd+. 停止 / beforeunload 脏标记提示）
 useKeyboardAndWindow({ hasRunningSlots, hasEditedSinceLoad, stopAllSlots });
 
-// URL参数处理函数
-function parseUrlParamsLocal() {
-  return parseUrlParams();
-}
-
-// 自动配置网关并跳转登录
-async function handleAutoGatewayLogin(gatewayUrl: string, clientId: string, projectName?: string) {
-  try {
-    console.log('=== 开始自动网关登录 ===');
-    console.log('网关URL:', gatewayUrl);
-    console.log('Client ID:', clientId);
-    console.log('项目名称:', projectName);
-    
-    // 验证网关URL格式
-    if (!validateGatewayUrl(gatewayUrl)) {
-      throw new Error('无效的网关地址格式');
-    }
-    
-    // 创建或切换到指定项目
-    let targetProjectId = currentProjectId.value;
-    console.log('当前项目ID:', targetProjectId);
-    
-    if (projectName) {
-      // 查找是否已有同名项目
-      const existingProject = projects.value.find(p => p.name === projectName);
-      if (existingProject) {
-        console.log('找到现有项目:', existingProject.name);
-        targetProjectId = existingProject.id;
-        await switchProject(targetProjectId);
-      } else {
-        // 创建新项目
-        console.log('创建新项目:', projectName);
-        const newProject = createProject(projectName);
-        if (newProject) {
-          targetProjectId = newProject.id;
-          await switchProject(targetProjectId);
-        }
-      }
-    }
-    
-    // 配置网关
-    const gatewayConfig: GatewayConfig = {
-      enabled: true,
-      baseUrl: gatewayUrl.replace(/\/$/, ''), // 移除末尾斜杠
-      clientId: clientId,
-      authorizeEndpoint: '/oauth/authorize',
-      tokenEndpoint: '/oauth/token',
-      redirectPath: '/auth/callback'
-    };
-    
-    console.log('网关配置:', gatewayConfig);
-    
-    // 保存网关配置
-    enableGatewayMode(gatewayConfig);
-    console.log('网关配置已保存');
-    
-    // 清除URL参数（避免重复处理）
-    clearShareParams();
-    console.log('URL参数已清除');
-    
-    console.log('准备跳转到OAuth登录...');
-    console.log('目标项目ID:', targetProjectId);
-    
-    // 直接跳转到网关登录
-    const { startOAuthLogin } = await import('./lib/oauth');
-    await startOAuthLogin(gatewayConfig, targetProjectId);
-    
-    console.log('OAuth登录流程已启动');
-    
-  } catch (err) {
-    console.error('=== 自动网关登录失败 ===');
-    console.error('错误详情:', err);
-    alert(`自动登录失败：${err instanceof Error ? err.message : '未知错误'}`);
-    
-    // 清除URL参数
-    clearShareParams();
-  }
-}
-
 // 生命周期
 onMounted(async () => {
-  // 检查是否是 OAuth 回调
-  if (window.location.pathname === '/auth/callback') {
-    try {
-      const result = await handleOAuthCallback(window.location.href);
-      if (result.success) {
-        // 清除 URL 中的回调参数，跳转到主页
-        window.history.replaceState({}, '', '/');
-        
-        // 初始化项目管理器（需要先初始化才能获取网关配置）
-        projectManager.initialize();
-        
-        // 自动获取 providers 和 models
-        await handleOAuthSuccess(result.projectId);
-        
-        alert('登录成功！');
-        return; // 提前返回，避免重复初始化
-      } else {
-        alert(`登录失败：${result.error}`);
-        window.history.replaceState({}, '', '/');
-      }
-    } catch (err) {
-      console.error('OAuth callback error:', err);
-      alert(`登录失败：${err instanceof Error ? err.message : '未知错误'}`);
-      window.history.replaceState({}, '', '/');
-    }
-  }
-  
+  // OAuth 回调命中则吸收（内部会 initialize projectManager + auto-fetch providers）
+  if (await maybeHandleOAuthCallback()) return;
+
   // 执行数据迁移（如果需要）
   await migrateToProjectNamespace();
-  
+
   // 初始化项目管理器
   projectManager.initialize();
-  
-  // 检查URL参数，处理自动网关登录
-  const urlParams = parseUrlParamsLocal();
-  console.log('URL参数解析结果:', urlParams);
-  
-  if (urlParams.gatewayUrl) {
-    console.log('检测到网关URL参数，开始自动配置...');
-    // 如果有网关URL参数，自动配置并跳转登录
-    await handleAutoGatewayLogin(urlParams.gatewayUrl, urlParams.clientId, urlParams.projectName);
-    return; // 跳转后不继续执行后续初始化
-  } else {
-    console.log('未检测到网关URL参数，继续正常初始化');
-  }
-  
+
+  // 带 gateway URL 参数则自动配置并跳 OAuth
+  if (await maybeHandleAutoGatewayLogin()) return;
+
   // 加载配置
   resetNewProfile();
   loadProfiles();
@@ -1172,15 +980,9 @@ onMounted(async () => {
   }
   await Promise.all(slots.value.map((slot) => refreshModelsForSlot(slot)));
   await loadHistory();
-  
+
   // 检查网关 token 是否需要刷新
-  if (gatewayConfig.value?.enabled) {
-    const needsReauth = await checkAndRefreshTokens(currentProjectId.value, gatewayConfig.value);
-    if (needsReauth) {
-      console.log('网关需要重新登录');
-    }
-  }
-  
+  await refreshGatewayTokensIfNeeded();
 });
 
 watch(
