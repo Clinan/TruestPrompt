@@ -30,6 +30,7 @@ import { useTheme } from './composables/useTheme';
 import { useEditorPersistence } from './composables/useEditorPersistence';
 import { useHistory } from './composables/useHistory';
 import { useKeyboardAndWindow } from './composables/useKeyboardAndWindow';
+import { useSlotState } from './composables/useSlotState';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
@@ -138,9 +139,25 @@ const shared = reactive<SharedState>({
 // 工具注册表（不再使用localStorage，保存到编辑器状态）
 const toolRegistry = ref<ToolRegistry>({});
 
-// Slots 状态
-const slots = ref<Slot[]>([]);
-const abortControllersBySlotId = new Map<string, { controller: AbortController; runId: string }>();
+// Slots 状态与 CRUD（见 composables/useSlotState.ts）
+const {
+  slots,
+  abortControllersBySlotId,
+  createSlot,
+  appendSlot,
+  addSlot,
+  copySlot,
+  removeSlot,
+  updateSlot,
+  onProviderChange,
+} = useSlotState({
+  providerProfiles,
+  refreshModelsForSlot,
+  resolvePluginId,
+  // thunk：saveEditorState 在 useEditorPersistence 里才定义，
+  // 此处先用闭包捕获，运行期（用户交互）才读取
+  saveEditorState: () => saveEditorState(),
+});
 
 // 模型相关
 const newProfile = reactive<ProviderProfileDraft>({
@@ -460,68 +477,6 @@ function requestClearProviderApiKeys() {
   });
 }
 
-// Slot 管理
-function createSlot(copyFrom?: Slot): Slot {
-  const defaultProvider = providerProfiles.value[0];
-  const providerProfileId = copyFrom?.providerProfileId ?? defaultProvider?.id ?? null;
-  const provider = providerProfiles.value.find((p) => p.id === providerProfileId);
-  const pluginId = provider?.pluginId ?? copyFrom?.pluginId ?? plugins[0].id;
-  return {
-    id: newId(),
-    providerProfileId,
-    pluginId,
-    modelId: copyFrom?.modelId ?? 'gpt-4o-mini',
-    systemPrompt:
-      copyFrom?.systemPrompt ?? 'You are a helpful assistant focused on prompt debugging insights.',
-    paramOverride: copyFrom?.paramOverride ? { ...copyFrom.paramOverride } : null,
-    selected: true,
-    status: 'idle',
-    output: '',
-    thinking: '',
-    toolCalls: null,
-    metrics: { ttfbMs: null, totalMs: null }
-  };
-}
-
-const slotAppendDebug = true;
-
-function traceSlotAppend(params: {
-  action: 'append';
-  source: string;
-  slotId?: string;
-  before?: number;
-  after?: number;
-  reason?: string;
-}) {
-  if (!slotAppendDebug) return;
-  const title = `[Slots] ${params.action} ${params.source}`;
-  console.groupCollapsed(title);
-  if (params.reason) console.log('reason:', params.reason);
-  if (params.slotId) console.log('slotId:', params.slotId);
-  if (typeof params.before === 'number' || typeof params.after === 'number') {
-    console.log('count:', params.before, '->', params.after);
-  }
-  console.trace('stack');
-  console.groupEnd();
-}
-
-function appendSlot(slot: Slot, source: string) {
-  const beforeCount = slots.value.length;
-  slots.value.push(slot);
-  traceSlotAppend({
-    action: 'append',
-    source,
-    slotId: slot.id,
-    before: beforeCount,
-    after: slots.value.length
-  });
-  saveEditorState();
-}
-
-function addSlot(copyFrom?: Slot) {
-  appendSlot(createSlot(copyFrom), copyFrom ? 'copy' : 'manual');
-}
-
 // 添加用户消息（供工具栏调用）
 function addUserMessage() {
   const newMessage: UserPromptPreset = {
@@ -530,15 +485,6 @@ function addUserMessage() {
     text: ''
   };
   shared.userPrompts = [...shared.userPrompts, newMessage];
-  saveEditorState();
-}
-
-function copySlot(slot: Slot) {
-  addSlot(slot);
-}
-
-function removeSlot(slotId: string) {
-  slots.value = slots.value.filter((s) => s.id !== slotId);
   saveEditorState();
 }
 
@@ -552,14 +498,6 @@ function requestRemoveSlot(slotId: string) {
     confirmText: '删除',
     action: () => removeSlot(slotId)
   });
-}
-
-function updateSlot(updatedSlot: Slot) {
-  const index = slots.value.findIndex(s => s.id === updatedSlot.id);
-  if (index >= 0) {
-    slots.value[index] = updatedSlot;
-    saveEditorState();
-  }
 }
 
 // 模型管理
@@ -702,13 +640,6 @@ async function forceRefreshModels(slot: Slot) {
     console.warn('清理模型缓存失败，将继续尝试刷新。', err);
   }
   await refreshModelsForSlotWithOptions(slot, { force: true });
-}
-
-function onProviderChange(slot: Slot) {
-  slot.modelId = '';
-  resolvePluginId(slot);
-  refreshModelsForSlot(slot);
-  saveEditorState();
 }
 
 // 请求构建
