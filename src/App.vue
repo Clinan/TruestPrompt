@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import localforage from 'localforage';
 import type {
   HistoryItem,
@@ -29,6 +29,7 @@ import { useModals } from './composables/useModals';
 import { useTheme } from './composables/useTheme';
 import { useEditorPersistence } from './composables/useEditorPersistence';
 import { useHistory } from './composables/useHistory';
+import { useKeyboardAndWindow } from './composables/useKeyboardAndWindow';
 import { handleOAuthCallback, checkAndRefreshTokens } from './lib/oauth';
 import { fetchGatewayProviders, createProviderFromGateway, getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { parseUrlParams, clearShareParams, validateGatewayUrl, generateShareUrl } from './lib/urlSharing';
@@ -1289,22 +1290,8 @@ async function handleCurlImport(result: ImportResult) {
   saveEditorState();
 }
 
-// 键盘快捷键
-function handleGlobalKeydown(event: KeyboardEvent) {
-  const wantsStop = (event.ctrlKey || event.metaKey) && (event.key === '.' || event.code === 'Period');
-  if (wantsStop && hasRunningSlots.value) {
-    event.preventDefault();
-    stopAllSlots();
-    return;
-  }
-}
-
-// 页面离开提示
-function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (!hasEditedSinceLoad.value) return;
-  event.preventDefault();
-  event.returnValue = '';
-}
+// 全局键盘 & 窗口事件（Ctrl/Cmd+. 停止 / beforeunload 脏标记提示）
+useKeyboardAndWindow({ hasRunningSlots, hasEditedSinceLoad, stopAllSlots });
 
 // URL参数处理函数
 function parseUrlParamsLocal() {
@@ -1451,13 +1438,6 @@ onMounted(async () => {
     }
   }
   
-  window.addEventListener('beforeunload', handleBeforeUnload);
-  window.addEventListener('keydown', handleGlobalKeydown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('beforeunload', handleBeforeUnload);
-  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 
 watch(
