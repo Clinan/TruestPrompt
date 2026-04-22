@@ -30,6 +30,7 @@ import { useGatewayAuth } from './composables/useGatewayAuth';
 import { getEffectiveApiKey } from './modules/provider/domain/gateway';
 import { generateShareUrl } from './lib/urlSharing';
 import { executeToolFromRegistry, type ToolRegistry } from './lib/toolExecutor';
+import { buildPluginRequest } from './lib/requestBuilder';
 import type { ToolCall } from './core/types';
 
 // 新组件导入
@@ -242,18 +243,6 @@ function closeCodeDialog() {
   codeDialogSlotId.value = null;
 }
 
-// 工具函数
-function removeEmptyEntries(obj: Record<string, unknown>) {
-  const cleaned: Record<string, unknown> = {};
-  Object.entries(obj).forEach(([key, value]) => {
-    if (value === undefined || value === null) return;
-    if (typeof value === 'string' && value.trim() === '') return;
-    if (Array.isArray(value) && value.length === 0) return;
-    cleaned[key] = value;
-  });
-  return cleaned;
-}
-
 const STREAM_UI_YIELD_INTERVAL_MS = 32;
 
 function createAbortError(message = '请求已中止') {
@@ -397,64 +386,9 @@ function requestRemoveSlot(slotId: string) {
   });
 }
 
-// 请求构建
-const RESERVED_REQUEST_PARAM_KEYS = new Set(['tools']);
-
-function mergeParams(slot: Slot) {
-  const combined: Record<string, unknown> = { ...shared.defaultParams, ...(slot.paramOverride || {}) };
-  RESERVED_REQUEST_PARAM_KEYS.forEach((key) => {
-    if (key in combined) {
-      delete combined[key];
-    }
-  });
-  return removeEmptyEntries(combined);
-}
-
-function buildVariableMap() {
-  const map: Record<string, string> = {};
-  shared.variables
-    .map((item) => ({ key: item.key.trim(), value: item.value }))
-    .filter((item) => item.key.length > 0)
-    .forEach((item) => {
-      map[item.key] = item.value;
-    });
-  return map;
-}
-
-function renderTemplate(source: string, variables: Record<string, string>) {
-  if (!source) return '';
-  return source.replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (match, key) =>
-    Object.prototype.hasOwnProperty.call(variables, key) ? variables[key]! : match
-  );
-}
-
+// 请求构建（见 lib/requestBuilder.ts，纯函数）
 function buildRequest(slot: Slot): PluginRequest {
-  const variables = buildVariableMap();
-  const composerMessages = shared.userPrompts
-    .map((message) => ({
-      role: message.role || 'user',
-      content: renderTemplate(message.text, variables),
-      // 传递图片数据（仅 user 角色消息有图片）
-      images: message.images
-    }))
-    .filter((msg) => msg.content.trim().length > 0 || (msg.images && msg.images.length > 0));
-  const userOnlyPrompts = composerMessages.filter((msg) => msg.role !== 'system').map((msg) => msg.content);
-  
-  // 计算 stream 参数：Slot 覆盖 > 全局默认参数 > 全局 streamOutput
-  const slotStream = slot.paramOverride?.stream as boolean | undefined;
-  const globalParamStream = shared.defaultParams.stream;
-  const effectiveStream = slotStream ?? globalParamStream ?? shared.streamOutput;
-  
-  return {
-    systemPrompt: renderTemplate(slot.systemPrompt, variables),
-    userPrompts: userOnlyPrompts,
-    toolsDefinition: shared.toolsDefinition,
-    params: mergeParams(slot),
-    modelId: slot.modelId,
-    enableSuggestions: shared.enableSuggestions,
-    stream: effectiveStream,
-    messages: composerMessages
-  };
+  return buildPluginRequest(slot, shared);
 }
 
 // cURL 导出
