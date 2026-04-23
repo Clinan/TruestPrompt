@@ -221,7 +221,7 @@ async function copyResult() {
 }
 
 .tool-call-item.status-pending {
-  border-left: 3px solid var(--color-border, #d9d9d9);
+  border-left: 3px solid var(--border-color, #d9d9d9);
 }
 
 .tool-call-item.status-running {
@@ -248,7 +248,7 @@ async function copyResult() {
 }
 
 .section {
-  border: 1px solid var(--color-border, #f0f0f0);
+  border: 1px solid var(--border-color, #f0f0f0);
   border-radius: 4px;
   overflow: hidden;
 }

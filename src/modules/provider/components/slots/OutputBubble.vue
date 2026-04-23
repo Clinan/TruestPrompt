@@ -90,7 +90,6 @@ const statusText = computed(() => {
 .bubble-content { font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
 .output-text { color: var(--text-primary); }
 .streaming-cursor::after { content: '█'; animation: blink 1s step-end infinite; color: var(--primary-color); }
-@keyframes blink { 50% { opacity: 0; } }
 .bubble-placeholder { color: var(--text-tertiary); font-size: 11px; font-style: italic; }
 .output-metrics { display: flex; align-items: center; gap: 2px; }
 .tool-calls-section { margin-top: 2px; }

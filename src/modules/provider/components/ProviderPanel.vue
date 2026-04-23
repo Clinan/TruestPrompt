@@ -315,9 +315,9 @@ const isFormValid = computed(() => {
     </template>
 
     <!-- Gateway Section -->
-    <div style="margin-bottom: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <TypographyTitle :level="5" style="margin: 0;">网关连接</TypographyTitle>
+    <div class="section-block">
+      <div class="section-header">
+        <TypographyTitle :level="5" class="no-margin-title">网关连接</TypographyTitle>
         <Space v-if="hasGatewayConfig && !showGatewayConfigForm">
           <Button type="link" size="small" @click="handleShowGatewayConfig">修改配置</Button>
           <Button type="link" size="small" danger @click="handleDisconnectGateway">断开连接</Button>
@@ -326,7 +326,7 @@ const isFormValid = computed(() => {
 
       <!-- Gateway config form -->
       <template v-if="showGatewayConfigForm || !hasGatewayConfig">
-        <Form layout="vertical" style="padding: 16px; background: var(--bg-secondary); border-radius: 8px;">
+        <Form layout="vertical" class="config-form">
           <Row :gutter="[16, 0]">
             <Col :span="12">
               <FormItem label="网关地址" required>
@@ -347,8 +347,8 @@ const isFormValid = computed(() => {
           </Row>
           
           <!-- Advanced config toggle -->
-          <div style="margin-bottom: 12px;">
-            <Button type="link" size="small" @click="showAdvancedConfig = !showAdvancedConfig" style="padding: 0;">
+          <div class="advanced-toggle">
+            <Button type="link" size="small" @click="showAdvancedConfig = !showAdvancedConfig" class="no-padding-btn">
               {{ showAdvancedConfig ? '收起高级配置' : '展开高级配置' }}
             </Button>
           </div>
@@ -383,7 +383,7 @@ const isFormValid = computed(() => {
             </Row>
           </template>
           
-          <FormItem style="margin-bottom: 0;">
+          <FormItem class="last-form-item">
             <Space>
               <Button 
                 v-if="hasGatewayConfig"
@@ -405,8 +405,8 @@ const isFormValid = computed(() => {
 
       <!-- Gateway status and actions -->
       <template v-else>
-        <div style="padding: 12px 16px; background: var(--bg-secondary); border-radius: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="gateway-status-card">
+          <div class="gateway-status-row">
             <Space>
               <TypographyText type="secondary">{{ gatewayConfig?.baseUrl }}</TypographyText>
               <template v-if="authStatus === 'logged_in'">
@@ -438,12 +438,12 @@ const isFormValid = computed(() => {
     </div>
 
     <!-- Local Provider Section -->
-    <div style="margin-bottom: 24px;">
-      <TypographyTitle :level="5" style="margin-bottom: 12px;">添加本地 Provider</TypographyTitle>
+    <div class="section-block">
+      <TypographyTitle :level="5" class="section-title">添加本地 Provider</TypographyTitle>
       <Alert
         type="info"
         show-icon
-        style="margin-bottom: 12px;"
+        class="section-alert"
       >
         <template #description>
           API Key 会以明文形式保存在本机浏览器中
@@ -481,7 +481,7 @@ const isFormValid = computed(() => {
           </Col>
         </Row>
 
-        <FormItem style="margin-bottom: 0;">
+        <FormItem class="last-form-item">
           <Space>
             <Button @click="props.onResetNewProfile">重置</Button>
             <Button 
@@ -498,7 +498,7 @@ const isFormValid = computed(() => {
 
     <!-- Provider List -->
     <div>
-      <TypographyTitle :level="5" style="margin-bottom: 12px;">Provider 列表</TypographyTitle>
+      <TypographyTitle :level="5" class="section-title">Provider 列表</TypographyTitle>
       <Table
         :columns="tableColumns"
         :data-source="props.providerProfiles"
@@ -547,11 +547,11 @@ const isFormValid = computed(() => {
     :width="500"
     :footer="null"
   >
-    <div v-if="importLoading" style="text-align: center; padding: 24px;">
+    <div v-if="importLoading" class="import-loading">
       加载中...
     </div>
     <template v-else>
-      <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+      <div class="import-select-header">
         <TypographyText type="secondary">
           选择要导入的 Provider（已导入的会显示为禁用状态）
         </TypographyText>
@@ -565,7 +565,7 @@ const isFormValid = computed(() => {
         :data-source="availableProviders"
         :bordered="true"
         size="small"
-        style="max-height: 300px; overflow-y: auto;"
+        class="import-provider-list"
       >
         <template #renderItem="{ item }">
           <List.Item>
@@ -575,10 +575,10 @@ const isFormValid = computed(() => {
               @change="(e: any) => handleProviderSelect((item as GatewayProvider).id, e.target.checked)"
             >
               <span>{{ (item as GatewayProvider).name }}</span>
-              <Tag 
-                v-if="importedGatewayProviderIds.has((item as GatewayProvider).id)" 
-                color="default" 
-                style="margin-left: 8px;"
+              <Tag
+                v-if="importedGatewayProviderIds.has((item as GatewayProvider).id)"
+                color="default"
+                class="imported-tag"
               >
                 已导入
               </Tag>
@@ -587,7 +587,7 @@ const isFormValid = computed(() => {
         </template>
       </List>
       
-      <div style="margin-top: 16px; text-align: right;">
+      <div class="import-footer">
         <Space>
           <Button @click="showImportModal = false">取消</Button>
           <Button 
@@ -602,3 +602,22 @@ const isFormValid = computed(() => {
     </template>
   </Modal>
 </template>
+
+<style scoped>
+.section-block { margin-bottom: 24px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.section-title { margin-bottom: 12px; }
+.section-alert { margin-bottom: 12px; }
+.no-margin-title { margin: 0; }
+.config-form { padding: 16px; background: var(--bg-secondary); border-radius: 8px; }
+.advanced-toggle { margin-bottom: 12px; }
+.no-padding-btn { padding: 0; }
+.gateway-status-card { padding: 12px 16px; background: var(--bg-secondary); border-radius: 8px; }
+.gateway-status-row { display: flex; justify-content: space-between; align-items: center; }
+.import-loading { text-align: center; padding: 24px; }
+.import-select-header { margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+.import-provider-list { max-height: 300px; overflow-y: auto; }
+.imported-tag { margin-left: 8px; }
+.import-footer { margin-top: 16px; text-align: right; }
+.last-form-item { margin-bottom: 0; }
+</style>

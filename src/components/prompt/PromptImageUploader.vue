@@ -161,20 +161,113 @@ function isImageError(imageId: string): boolean {
 </template>
 
 <style scoped>
-.image-btn-active { color: var(--primary-color) !important; }
-.image-thumbnails { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding: 8px; background: var(--bg-secondary); border-radius: 4px; }
-.image-thumbnail { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.thumbnail-wrapper { position: relative; width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-tertiary); }
-.thumbnail-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-.thumbnail-error { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 10px; gap: 2px; }
-.thumbnail-remove { position: absolute; top: -4px; right: -4px; width: 18px !important; height: 18px !important; padding: 0 !important; background: var(--bg-primary) !important; border-radius: 50% !important; opacity: 0; transition: opacity 150ms; }
-.thumbnail-wrapper:hover .thumbnail-remove { opacity: 1; }
-.thumbnail-label { font-size: 9px; color: var(--text-tertiary); }
-.image-panel { margin-top: 8px; padding: 8px; background: var(--bg-secondary); border-radius: 4px; border: 1px dashed var(--border-color); }
-.image-panel-header { margin-bottom: 8px; }
-.image-panel-content { display: flex; align-items: center; gap: 8px; }
-.url-input-group { display: flex; gap: 8px; flex: 1; }
-.url-input-group .ant-input { flex: 1; }
-.file-upload-group { display: flex; align-items: center; gap: 8px; }
-.upload-hint { font-size: 11px; color: var(--text-tertiary); }
+.image-btn-active {
+  color: var(--primary-color) !important;
+}
+
+.image-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.image-thumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.thumbnail-wrapper {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.thumbnail-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  gap: 2px;
+}
+
+.thumbnail-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0 !important;
+  background: var(--bg-primary) !important;
+  border-radius: 50% !important;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.thumbnail-wrapper:hover .thumbnail-remove {
+  opacity: 1;
+}
+
+.thumbnail-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+
+.image-panel {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  border: 1px dashed var(--border-color);
+}
+
+.image-panel-header {
+  margin-bottom: 8px;
+}
+
+.image-panel-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.url-input-group {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.url-input-group .ant-input {
+  flex: 1;
+}
+
+.file-upload-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
 </style>

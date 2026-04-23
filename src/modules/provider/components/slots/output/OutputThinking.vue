@@ -62,7 +62,6 @@ async function copyThinking() {
 .thinking-content { font-size: 11px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .thinking-text { color: var(--text-secondary); font-style: italic; }
 .streaming-cursor::after { content: '█'; animation: blink 1s step-end infinite; color: var(--primary-color); }
-@keyframes blink { 50% { opacity: 0; } }
 
 [data-theme="dark"] .thinking-bubble {
   background: var(--thinking-bg, linear-gradient(135deg, rgba(102,126,234,0.15) 0%, rgba(118,75,162,0.15) 100%));
