@@ -68,18 +68,26 @@ const emit = defineEmits<{
 <style scoped>
 .drawer-panel { background: transparent; }
 .drawer-panel :deep(.ant-collapse-header) {
-  padding: 16px 24px !important; background: var(--bg-secondary, #fafafa); font-weight: 500;
+  padding: 16px 24px !important;
+  background: var(--bg-secondary);
+  font-weight: 500;
 }
 .drawer-panel :deep(.ant-collapse-content-box) { padding: 16px 24px; }
 .panel-title { font-size: 14px; font-weight: 500; }
 .panel-content { display: flex; flex-direction: column; gap: 12px; }
-.help-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-.editor-wrapper { border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; height: 300px; }
+.help-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+.editor-wrapper {
+  height: 300px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
 .editor-wrapper :deep(.cm-editor) { height: 100%; font-size: 12px; }
 .editor-wrapper :deep(.cm-scroller) { overflow: auto !important; }
-.editor-wrapper :deep(.cm-gutters) { background-color: var(--bg-secondary, #f5f5f5); border-right: 1px solid var(--border-color); }
-.editor-wrapper :deep(.cm-diagnostic-error) { border-left: 3px solid #ff4d4f; }
-
-[data-theme="dark"] .drawer-panel :deep(.ant-collapse-header) { background: var(--bg-secondary, #1a1a1a); }
-[data-theme="dark"] .editor-wrapper :deep(.cm-gutters) { background-color: var(--bg-secondary, #1a1a1a); }
+.editor-wrapper :deep(.cm-gutters) {
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+.editor-wrapper :deep(.cm-diagnostic-error) { border-left: 3px solid var(--error-color); }
 </style>

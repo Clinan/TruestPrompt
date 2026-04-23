@@ -126,14 +126,8 @@ function handleUpdate(value: string) {
   height: 100%;
   overflow: hidden;
 }
-
-.json-editor :deep(.cm-editor) {
-  height: 100%;
-}
-
-.json-editor :deep(.cm-scroller) {
-  overflow: auto !important;
-}
+.json-editor :deep(.cm-editor) { height: 100%; }
+.json-editor :deep(.cm-scroller) { overflow: auto !important; }
 
 .json-editor__copy {
   position: absolute;
@@ -141,22 +135,16 @@ function handleUpdate(value: string) {
   right: 8px;
   z-index: 2;
   opacity: 0;
-  transition: opacity var(--duration-fast, 150ms) var(--ease-out-expo, ease);
+  transition: opacity var(--duration-fast) var(--ease-out-expo);
 }
-
 .json-editor.has-copy:hover .json-editor__copy,
-.json-editor__copy:focus-within {
-  opacity: 1;
-}
+.json-editor__copy:focus-within { opacity: 1; }
 
 .json-editor__copy-btn {
-  background: var(--card-bg, rgba(255, 255, 255, 0.9));
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(4px);
 }
-
-.json-editor__copy-btn:hover {
-  background: var(--hover-bg, rgba(0, 0, 0, 0.04));
-}
+.json-editor__copy-btn:hover { background: var(--hover-bg); }
 </style>

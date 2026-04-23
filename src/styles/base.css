@@ -6,12 +6,12 @@
 
 /* 全局隐藏滚动条但保持滚动功能 */
 * {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Opera */
+  display: none;
 }
 
 body {
@@ -20,17 +20,6 @@ body {
   background: var(--page-gradient);
   color: var(--text);
   transition: background 0.3s ease, color 0.3s ease;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
 }
 
 #app {

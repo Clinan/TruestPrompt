@@ -182,29 +182,46 @@ function handleCopyTemplate() {
 <style scoped>
 .drawer-panel { background: transparent; }
 .drawer-panel :deep(.ant-collapse-header) {
-  padding: 16px 24px !important; background: var(--bg-secondary, #fafafa); font-weight: 500;
+  padding: 16px 24px !important;
+  background: var(--bg-secondary);
+  font-weight: 500;
 }
 .drawer-panel :deep(.ant-collapse-content-box) { padding: 16px 24px; }
 .panel-title { font-size: 14px; font-weight: 500; }
 .panel-content { display: flex; flex-direction: column; gap: 12px; }
-.help-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-.editor-wrapper { border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; height: 300px; }
+.help-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+.editor-wrapper {
+  height: 300px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
 .editor-wrapper.large { height: 400px; }
 .editor-wrapper :deep(.cm-editor) { height: 100%; font-size: 12px; }
 .editor-wrapper :deep(.cm-scroller) { overflow: auto !important; }
-.editor-wrapper :deep(.cm-gutters) { background-color: var(--bg-secondary, #f5f5f5); border-right: 1px solid var(--border-color); }
-.editor-wrapper :deep(.cm-diagnostic-error) { border-left: 3px solid #ff4d4f; }
-
-[data-theme="dark"] .drawer-panel :deep(.ant-collapse-header) { background: var(--bg-secondary, #1a1a1a); }
-[data-theme="dark"] .editor-wrapper :deep(.cm-gutters) { background-color: var(--bg-secondary, #1a1a1a); }
+.editor-wrapper :deep(.cm-gutters) {
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+.editor-wrapper :deep(.cm-diagnostic-error) { border-left: 3px solid var(--error-color); }
 
 .template-modal-content { display: flex; flex-direction: column; gap: 16px; }
 .template-description h4 { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; }
 .template-description ul { margin: 0; padding-left: 20px; list-style: none; }
 .template-description li { margin: 6px 0; font-size: 13px; line-height: 1.6; }
-.template-description code { background: var(--bg-secondary, #f5f5f5); padding: 2px 6px; border-radius: 3px; font-family: 'Monaco', 'Menlo', monospace; font-size: 12px; }
-.template-editor { border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; }
+.template-description code {
+  padding: 2px 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 12px;
+}
+.template-editor {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
 .template-editor :deep(.cm-editor) { font-size: 12px; }
 .template-actions { display: flex; justify-content: flex-end; }
-[data-theme="dark"] .template-description code { background: var(--bg-secondary, #1a1a1a); color: var(--text-primary); }
 </style>

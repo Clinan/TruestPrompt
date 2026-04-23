@@ -207,61 +207,52 @@ function resetToDefaults() {
 </template>
 
 <style scoped>
-.params-modal-content {
-  padding: 8px 0;
-}
+.params-modal-content { padding: 8px 0; }
 
 .params-hint {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: var(--bg-secondary, #f5f5f5);
-  border-radius: 6px;
   margin-bottom: 16px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
   font-size: 12px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .thinking-hint {
   padding: 6px 10px;
-  background: var(--warning-bg, #fffbe6);
-  border: 1px solid var(--warning-border, #ffe58f);
-  border-radius: 4px;
   margin-bottom: 12px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 4px;
   font-size: 11px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .divider-text {
-  font-size: 12px;
-  color: var(--text-secondary, #666);
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.params-form {
-  margin-bottom: 8px;
-}
+.params-form { margin-bottom: 8px; }
+.params-form :deep(.ant-form-item) { margin-bottom: 12px; }
 
-.params-form :deep(.ant-form-item) {
-  margin-bottom: 12px;
-}
-
-.param-input {
-  width: 100%;
-}
+.param-input { width: 100%; }
 
 .param-help {
-  font-size: 11px;
-  color: var(--text-tertiary, #999);
   margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 .reset-row {
-  text-align: right;
   padding-top: 8px;
-  border-top: 1px solid var(--border-color, #e8e8e8);
+  border-top: 1px solid var(--border-color);
+  text-align: right;
 }
 </style>

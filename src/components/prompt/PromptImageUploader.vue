@@ -161,9 +161,7 @@ function isImageError(imageId: string): boolean {
 </template>
 
 <style scoped>
-.image-btn-active {
-  color: var(--primary-color) !important;
-}
+.image-btn-active { color: var(--primary-color) !important; }
 
 .image-thumbnails {
   display: flex;
@@ -186,12 +184,11 @@ function isImageError(imageId: string): boolean {
   position: relative;
   width: 60px;
   height: 60px;
-  border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
   background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
 }
-
 .thumbnail-wrapper img {
   width: 100%;
   height: 100%;
@@ -199,15 +196,15 @@ function isImageError(imageId: string): boolean {
 }
 
 .thumbnail-error {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-tertiary);
-  font-size: 10px;
   gap: 2px;
+  width: 100%;
+  height: 100%;
+  font-size: 10px;
+  color: var(--text-tertiary);
 }
 
 .thumbnail-remove {
@@ -222,10 +219,7 @@ function isImageError(imageId: string): boolean {
   opacity: 0;
   transition: opacity 150ms;
 }
-
-.thumbnail-wrapper:hover .thumbnail-remove {
-  opacity: 1;
-}
+.thumbnail-wrapper:hover .thumbnail-remove { opacity: 1; }
 
 .thumbnail-label {
   font-size: 9px;
@@ -236,14 +230,10 @@ function isImageError(imageId: string): boolean {
   margin-top: 8px;
   padding: 8px;
   background: var(--bg-secondary);
-  border-radius: 4px;
   border: 1px dashed var(--border-color);
+  border-radius: 4px;
 }
-
-.image-panel-header {
-  margin-bottom: 8px;
-}
-
+.image-panel-header { margin-bottom: 8px; }
 .image-panel-content {
   display: flex;
   align-items: center;
@@ -251,14 +241,11 @@ function isImageError(imageId: string): boolean {
 }
 
 .url-input-group {
+  flex: 1;
   display: flex;
   gap: 8px;
-  flex: 1;
 }
-
-.url-input-group .ant-input {
-  flex: 1;
-}
+.url-input-group .ant-input { flex: 1; }
 
 .file-upload-group {
   display: flex;

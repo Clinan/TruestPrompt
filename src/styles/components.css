@@ -1,10 +1,5 @@
 /* Ant Design Select 内部输入框修复 */
-.ant-select-selection-search-input {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
+.ant-select-selection-search-input,
 .ant-select-selection-search-input:focus,
 .ant-select-selection-search-input:focus-visible {
   border: none !important;

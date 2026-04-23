@@ -311,97 +311,80 @@ function handleMenuClick(key: string) {
 
 <style scoped>
 .app-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  background: var(--card-solid);
-  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   min-height: 40px;
+  padding: 4px 8px;
   overflow: hidden;
+  background: var(--card-solid);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .toolbar-left {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-weight: 600;
   font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
 }
+.logo-icon { font-size: 16px; }
+.logo-text.hide-on-mobile { display: none; }
 
-.logo-icon {
-  font-size: 16px;
-}
-
-.logo-text.hide-on-mobile {
-  display: none;
-}
-
-.project-select {
-  min-width: 120px;
-}
-
+.project-select { min-width: 120px; }
 .project-select :deep(.ant-select-selector) {
-  font-size: 12px;
   height: 26px !important;
+  font-size: 12px;
 }
-
-.project-select :deep(.ant-select-selection-item) {
-  line-height: 24px !important;
-}
+.project-select :deep(.ant-select-selection-item) { line-height: 24px !important; }
 
 .toolbar-center {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
 }
-
 .toolbar-center.toolbar-hidden {
   position: absolute;
   visibility: hidden;
   pointer-events: none;
 }
-
 .toolbar-center :deep(.ant-btn) {
-  font-size: 12px;
   height: 26px;
   padding: 0 8px;
+  font-size: 12px;
 }
-
-.toolbar-center :deep(.ant-space-item) {
-  line-height: 1;
-}
+.toolbar-center :deep(.ant-space-item) { line-height: 1; }
 
 .toolbar-center-compact {
+  flex: 1;
   display: flex;
   align-items: center;
-  flex: 1;
   justify-content: flex-end;
   margin-right: 8px;
 }
 
 .menu-trigger {
-  font-size: 12px;
   height: 26px;
   padding: 0 12px;
+  font-size: 12px;
 }
 
 .toolbar-right {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 0;
 }
 
 .theme-toggle-btn {
@@ -412,19 +395,12 @@ function handleMenuClick(key: string) {
   height: 26px !important;
 }
 
-/* 下拉菜单样式 */
-:deep(.ant-dropdown-menu) {
-  min-width: 160px;
-}
-
+:deep(.ant-dropdown-menu) { min-width: 160px; }
 :deep(.ant-dropdown-menu-item) {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
 }
-
-:deep(.ant-dropdown-menu-item .anticon) {
-  font-size: 14px;
-}
+:deep(.ant-dropdown-menu-item .anticon) { font-size: 14px; }
 </style>

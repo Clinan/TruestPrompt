@@ -382,47 +382,25 @@ function handleUpdateToolCall(toolCall: any) {
 <style scoped>
 .slot-card {
   position: relative;
+  overflow: hidden;
   border-radius: 6px;
   transition: all 150ms ease-out;
-  overflow: hidden;
 }
-
-.slot-card :deep(.ant-card-body) {
-  padding: 6px 8px;
-}
-
-.slot-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.slot-card.is-running {
-  border-color: var(--primary-color);
-}
-
-.slot-card.is-done {
-  border-color: var(--success-color);
-}
-
-.slot-card.is-error {
-  border-color: var(--error-color);
-}
-
+.slot-card :deep(.ant-card-body) { padding: 6px 8px; }
+.slot-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+.slot-card.is-running { border-color: var(--primary-color); }
+.slot-card.is-done { border-color: var(--success-color); }
+.slot-card.is-error { border-color: var(--error-color); }
 .slot-card.is-highlighted {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb, 22, 119, 255), 0.2);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
   animation: slot-highlight-pulse 1.5s ease-in-out;
 }
 
 @keyframes slot-highlight-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb, 22, 119, 255), 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(var(--primary-color-rgb, 22, 119, 255), 0.1);
-  }
-  100% {
-    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb, 22, 119, 255), 0.2);
-  }
+  0%   { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4); }
+  50%  { box-shadow: 0 0 0 8px rgba(var(--primary-color-rgb), 0.1); }
+  100% { box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2); }
 }
 
 .slot-progress {
@@ -430,122 +408,98 @@ function handleUpdateToolCall(toolCall: any) {
   top: 0;
   left: 0;
   right: 0;
+  margin: 0 !important;
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+  z-index: 2;
+  pointer-events: none;
 }
-
+.slot-progress :deep(.ant-progress-outer) {
+  display: block;
+  padding: 0 !important;
+  margin: 0 !important;
+}
 .slot-progress :deep(.ant-progress-inner) {
+  display: block;
   border-radius: 0;
+  vertical-align: top;
 }
+.slot-progress :deep(.ant-progress-bg) { vertical-align: top; }
 
-.slot-header {
-  margin-bottom: 6px;
-}
+.slot-header { margin-bottom: 6px; }
 
 .slot-selectors {
   display: flex;
-  gap: 6px;
   align-items: center;
+  gap: 6px;
 }
 
 .provider-select {
   flex: 1;
   min-width: 90px;
 }
-
-.provider-select :deep(.ant-select-selector) {
-  font-size: 12px;
-  height: 26px !important;
-}
-
-.provider-select :deep(.ant-select-selection-item) {
-  line-height: 24px !important;
-}
+.provider-select :deep(.ant-select-selector) { height: 26px !important; font-size: 12px; }
+.provider-select :deep(.ant-select-selection-item) { line-height: 24px !important; }
 
 .model-select-wrapper {
   flex: 2;
   display: flex;
-  gap: 2px;
   align-items: center;
+  gap: 2px;
 }
-
-.model-select {
-  flex: 1;
-}
-
+.model-select { flex: 1; }
 .model-select :deep(.ant-select-selector),
 .model-select :deep(.ant-input) {
-  font-size: 12px;
   height: 26px !important;
+  font-size: 12px;
   line-height: 24px !important;
 }
-
-.model-select :deep(.ant-select-selection-search-input) {
-  height: 24px !important;
-}
-
-/* 修复 AutoComplete 下拉选项的选中高亮样式 */
+.model-select :deep(.ant-select-selection-search-input) { height: 24px !important; }
 .model-select :deep(.ant-select-item-option-active),
-.model-select :deep(.ant-select-item-option-selected) {
-  border-radius: 4px;
-}
+.model-select :deep(.ant-select-item-option-selected) { border-radius: 4px; }
 
-.slot-system-prompt {
-  margin-bottom: 6px;
+.slot-system-prompt { margin-bottom: 6px; }
+.slot-system-prompt :deep(.ant-input) {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .section-label {
   display: block;
+  margin-bottom: 2px;
   font-size: 10px;
   font-weight: 500;
   color: var(--text-secondary);
-  margin-bottom: 2px;
-}
-
-.slot-system-prompt :deep(.ant-input) {
-  font-size: 12px;
-  line-height: 1.4;
-  padding: 4px 8px;
 }
 
 /* System Prompt 编辑器固定为 1/2 屏幕高度 */
 .system-prompt-editor {
   height: 60vh;
+  overflow: hidden;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  overflow: hidden;
 }
-
-.system-prompt-editor :deep(.cm-editor) {
-  height: 100%;
-  font-size: 12px;
-}
-
-.system-prompt-editor :deep(.cm-scroller) {
-  overflow: auto;
-}
-
-.system-prompt-editor :deep(.cm-content) {
-  padding: 8px;
-}
+.system-prompt-editor :deep(.cm-editor) { height: 100%; font-size: 12px; }
+.system-prompt-editor :deep(.cm-scroller) { overflow: auto; }
+.system-prompt-editor :deep(.cm-content) { padding: 8px; }
 
 .slot-actions {
   margin-bottom: 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border-color);
 }
-
 .slot-actions :deep(.ant-btn) {
-  font-size: 12px;
   height: 26px;
   padding: 0 8px;
+  font-size: 12px;
 }
-
 .slot-actions :deep(.ant-btn-icon-only) {
   width: 26px;
   height: 26px;
   padding: 0;
 }
 
-.slot-output {
-  min-height: 40px;
-}
+.slot-output { min-height: 40px; }
 </style>

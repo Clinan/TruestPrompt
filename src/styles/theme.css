@@ -2,184 +2,81 @@
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.6;
   font-weight: 500;
-  --radius: 6px;
-  --radius-sm: 4px;
-  --radius-lg: 12px;
-  --radius-xl: 18px;
-  
-  /* 间距系统 */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
+
   --bg: #f6f7fb;
-  --bg2: #eef2ff;
+  --bg-primary: #ffffff;
   --bg-secondary: #fafafa;
-  --card: rgba(255, 255, 255, 0.94);
+  --bg-tertiary: #f0f0f0;
+  --bg-hover: rgba(0, 0, 0, 0.06);
   --card-solid: #ffffff;
   --card-bg: rgba(0, 0, 0, 0.02);
   --hover-bg: rgba(0, 0, 0, 0.04);
-  --stroke: rgba(15, 23, 42, 0.1);
-  --stroke-strong: rgba(15, 23, 42, 0.14);
-  --text: #0b1220;
-  --text-muted: rgba(11, 18, 32, 0.62);
-  --accent: #4f8cff;
-  --accent2: #8b5cf6;
-  --accent-soft: rgba(79, 140, 255, 0.14);
-  --state-idle: rgba(11, 18, 32, 0.35);
-  --state-running: #3b82f6;
-  --state-done: #10b981;
-  --state-error: #ef4444;
-  --state-canceled: #f59e0b;
-  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --shadow-hover: 0 16px 40px rgba(15, 23, 42, 0.1);
-  --glass-blur: blur(12px);
-  --ring: 0 0 0 4px rgba(79, 140, 255, 0.18);
-  --page-gradient: radial-gradient(circle at 8% 10%, rgba(79, 140, 255, 0.1), transparent 35%),
-    radial-gradient(circle at 92% 12%, rgba(139, 92, 246, 0.09), transparent 32%), var(--bg);
 
-  --surface: var(--card);
-  --surface-alt: rgba(255, 255, 255, 0.96);
-  --border: var(--stroke);
-  --border-strong: var(--stroke-strong);
-  --muted: var(--text-muted);
-  --primary: var(--accent);
-  --primary-strong: #3d7be8;
-  --success: var(--state-done);
-  --danger: var(--state-error);
-  --shadow-soft: var(--shadow);
-  
-  /* LangUI 对话气泡颜色 - 浅色主题 */
-  --bubble-user-bg: #e3f2fd;
-  --bubble-assistant-bg: #f5f5f5;
-  --bubble-system-bg: #fff3e0;
-  --bubble-error-bg: #ffebee;
-  
-  /* Ant Design Vue 主色 */
+  --text: #0b1220;
+  --text-primary: #262626;
+  --text-secondary: #595959;
+  --text-tertiary: #8c8c8c;
+
+  --border-color: #e8e8e8;
+  --code-bg: #f6f8fa;
+
   --primary-color: #1890ff;
+  --primary-color-rgb: 24, 144, 255;
+  --primary-bg: rgba(24, 144, 255, 0.1);
   --success-color: #52c41a;
   --warning-color: #faad14;
   --error-color: #ff4d4f;
   --error-bg: #fff2f0;
-  --info-color: #1890ff;
-  
-  /* 文本颜色 */
-  --text-primary: #262626;
-  --text-secondary: #595959;
-  --text-tertiary: #8c8c8c;
-  
-  /* 代码块背景 */
-  --code-bg: #f6f8fa;
-  
-  /* 徽章背景 */
-  --badge-bg: rgba(0, 0, 0, 0.04);
-  
-  /* 背景/交互 */
-  --bg-primary: #ffffff;
-  --bg-tertiary: #f0f0f0;
-  --bg-hover: rgba(0, 0, 0, 0.06);
-
-  /* 主色 RGB 值 (用于 rgba) */
-  --primary-color-rgb: 24, 144, 255;
-  --primary-bg: rgba(24, 144, 255, 0.1);
   --warning-bg: #fffbe6;
   --warning-border: #ffe58f;
 
-  /* Thinking 区块 */
+  --bubble-assistant-bg: #f5f5f5;
   --thinking-bg: rgba(24, 144, 255, 0.04);
   --thinking-border: rgba(24, 144, 255, 0.12);
   --thinking-header-bg: rgba(24, 144, 255, 0.08);
 
-  /* 边框颜色 */
-  --border-color: #e8e8e8;
-  --color-border: #e8e8e8;
+  --page-gradient: radial-gradient(circle at 8% 10%, rgba(79, 140, 255, 0.1), transparent 35%),
+    radial-gradient(circle at 92% 12%, rgba(139, 92, 246, 0.09), transparent 32%), var(--bg);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+
   --bg: #030712;
-  --bg2: #0b1224;
+  --bg-primary: #141414;
   --bg-secondary: #1a202c;
-  --card: rgba(13, 17, 23, 0.92);
+  --bg-tertiary: #262626;
+  --bg-hover: rgba(255, 255, 255, 0.12);
   --card-solid: #0f172a;
   --card-bg: rgba(255, 255, 255, 0.04);
   --hover-bg: rgba(255, 255, 255, 0.08);
-  --stroke: rgba(148, 163, 184, 0.28);
-  --stroke-strong: rgba(148, 163, 184, 0.4);
-  --text: #e2e8f0;
-  --text-muted: rgba(148, 163, 184, 0.8);
-  --accent: #3b82f6;
-  --accent2: #a855f7;
-  --accent-soft: rgba(59, 130, 246, 0.18);
-  --state-idle: rgba(226, 232, 240, 0.48);
-  --state-running: #38bdf8;
-  --state-done: #22c55e;
-  --state-error: #f87171;
-  --state-canceled: #fbbf24;
-  --shadow: 0 20px 60px rgba(2, 6, 23, 0.5);
-  --shadow-hover: 0 24px 70px rgba(2, 6, 23, 0.62);
-  --glass-blur: blur(16px);
-  --ring: 0 0 0 3px rgba(59, 130, 246, 0.4);
-  --page-gradient: radial-gradient(circle at 12% 20%, rgba(60, 90, 255, 0.2), transparent 55%) var(--bg);
 
-  --surface: var(--card);
-  --surface-alt: rgba(19, 24, 35, 0.92);
-  --border: var(--stroke);
-  --border-strong: var(--stroke-strong);
-  --muted: var(--text-muted);
-  --primary: var(--accent);
-  --primary-strong: #2563eb;
-  --success: var(--state-done);
-  --danger: var(--state-error);
-  --shadow-soft: var(--shadow);
-  
-  /* LangUI 对话气泡颜色 - 暗色主题 */
-  --bubble-user-bg: #1a365d;
-  --bubble-assistant-bg: #2d3748;
-  --bubble-system-bg: #744210;
-  --bubble-error-bg: #742a2a;
-  
-  /* Ant Design Vue 主色 - 暗色主题 */
+  --text: #e2e8f0;
+  --text-primary: #e2e8f0;
+  --text-secondary: #a0aec0;
+  --text-tertiary: #718096;
+
+  --border-color: #303030;
+  --code-bg: #1a202c;
+
   --primary-color: #177ddc;
+  --primary-color-rgb: 23, 125, 220;
+  --primary-bg: rgba(23, 125, 220, 0.1);
   --success-color: #49aa19;
   --warning-color: #d89614;
   --error-color: #d32029;
   --error-bg: #2a1215;
-  --info-color: #177ddc;
-  
-  /* 文本颜色 - 暗色主题 */
-  --text-primary: #e2e8f0;
-  --text-secondary: #a0aec0;
-  --text-tertiary: #718096;
-  
-  /* 代码块背景 - 暗色主题 */
-  --code-bg: #1a202c;
-  
-  /* 徽章背景 - 暗色主题 */
-  --badge-bg: rgba(255, 255, 255, 0.08);
-  
-  /* 背景/交互 */
-  --bg-primary: #141414;
-  --bg-tertiary: #262626;
-  --bg-hover: rgba(255, 255, 255, 0.12);
-
-  /* 主色 RGB 值 (用于 rgba) */
-  --primary-color-rgb: 23, 125, 220;
-  --primary-bg: rgba(23, 125, 220, 0.1);
   --warning-bg: #2b2111;
   --warning-border: #614700;
 
-  /* Thinking 区块 */
+  --bubble-assistant-bg: #2d3748;
   --thinking-bg: rgba(23, 125, 220, 0.06);
   --thinking-border: rgba(23, 125, 220, 0.16);
   --thinking-header-bg: rgba(23, 125, 220, 0.10);
 
-  /* 边框颜色 - 暗色主题 */
-  --border-color: #303030;
-  --color-border: #303030;
+  --page-gradient: radial-gradient(circle at 12% 20%, rgba(60, 90, 255, 0.2), transparent 55%) var(--bg);
 }

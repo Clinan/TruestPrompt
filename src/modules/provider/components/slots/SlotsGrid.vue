@@ -120,8 +120,8 @@ function createBuildRequestForSlot(slot: Slot) {
 
 <style scoped>
 .slots-grid-section {
-  background: transparent;
   padding: 0;
+  background: transparent;
 }
 
 .slots-header {
@@ -136,74 +136,45 @@ function createBuildRequestForSlot(slot: Slot) {
   display: flex;
   align-items: center;
   gap: 4px;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
-  margin: 0;
   color: var(--text-primary);
 }
-
-.title-icon {
-  font-size: 14px;
-}
+.title-icon { font-size: 14px; }
 
 .slots-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
-
-/* 单个 Slot 时占满整个宽度 */
-.slots-grid.single-slot {
-  grid-template-columns: 1fr;
-}
+.slots-grid.single-slot { grid-template-columns: 1fr; }
 
 /* 卡片动画 */
-.slot-card-enter-active {
-  animation: card-in 150ms ease-out;
-}
-
+.slot-card-enter-active { animation: card-in 150ms ease-out; }
 .slot-card-leave-active {
-  animation: card-out 100ms ease-in;
   position: absolute;
+  animation: card-out 100ms ease-in;
 }
-
-.slot-card-move {
-  transition: transform 150ms ease-out;
-}
+.slot-card-move { transition: transform 150ms ease-out; }
 
 @keyframes card-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
-
 @keyframes card-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.95); }
 }
 
 .slots-empty {
-  text-align: center;
-  padding: 24px 12px;
-  color: var(--text-tertiary);
   grid-column: 1 / -1;
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-tertiary);
 }
 
-/* 响应式：小屏幕单列 */
 @media (max-width: 1200px) {
-  .slots-grid {
-    grid-template-columns: 1fr;
-  }
+  .slots-grid { grid-template-columns: 1fr; }
 }
 </style>

@@ -596,9 +596,9 @@ watch(
 
 <style>
 .app {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--text-primary);
 }

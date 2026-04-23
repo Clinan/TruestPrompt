@@ -247,17 +247,17 @@ function handleSelect(projectId: string) {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
   height: 28px;
-  font-size: 13px;
+  padding: 4px 10px;
   border-radius: 6px;
+  font-size: 13px;
 }
 
 .project-name {
   max-width: 140px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .dropdown-icon {
@@ -266,18 +266,18 @@ function handleSelect(projectId: string) {
 }
 
 .project-dropdown {
-  background: var(--card-solid, #fff);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 220px;
   max-width: 280px;
   overflow: hidden;
+  background: var(--card-solid);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .project-list {
   max-height: 320px;
-  overflow-y: auto;
   padding: 4px;
+  overflow-y: auto;
 }
 
 .project-item {
@@ -290,20 +290,18 @@ function handleSelect(projectId: string) {
   transition: background 0.2s;
 }
 
-.project-item:hover {
-  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
-}
+.project-item:hover { background: var(--bg-hover); }
 
 .project-item.active {
-  background: var(--primary-bg, rgba(22, 119, 255, 0.1));
-  color: var(--primary-color, #1677ff);
+  background: var(--primary-bg);
+  color: var(--primary-color);
 }
 
 .project-item-name {
   flex: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 13px;
 }
 
@@ -312,36 +310,26 @@ function handleSelect(projectId: string) {
   gap: 2px;
 }
 
-.project-item:hover .project-actions {
-  display: flex;
-}
+.project-item:hover .project-actions { display: flex; }
 
 .action-btn {
-  width: 24px;
-  height: 24px;
-  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary, #666);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-secondary);
 }
 
 .action-btn:hover {
-  color: var(--primary-color, #1677ff);
-  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+  background: var(--bg-hover);
+  color: var(--primary-color);
 }
 
-.action-btn.danger:hover {
-  color: var(--error-color, #ff4d4f);
-}
-
-.action-btn.confirm:hover {
-  color: var(--success-color, #52c41a);
-}
-
-.action-btn.cancel:hover {
-  color: var(--text-secondary, #666);
-}
+.action-btn.danger:hover { color: var(--error-color); }
+.action-btn.confirm:hover { color: var(--success-color); }
+.action-btn.cancel:hover { color: var(--text-secondary); }
 
 .rename-input {
   flex: 1;
@@ -354,8 +342,8 @@ function handleSelect(projectId: string) {
 }
 
 .project-dropdown-footer {
-  border-top: 1px solid var(--border-color, #e8e8e8);
   padding: 4px;
+  border-top: 1px solid var(--border-color);
 }
 
 .new-project-btn {
@@ -363,21 +351,19 @@ function handleSelect(projectId: string) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: var(--primary-color, #1677ff);
+  color: var(--primary-color);
 }
 
-.new-project-form {
-  padding: 8px 0;
-}
+.new-project-form { padding: 8px 0; }
 
 .error-text {
-  color: var(--error-color, #ff4d4f);
-  font-size: 12px;
   margin-top: 4px;
+  font-size: 12px;
+  color: var(--error-color);
 }
 
 .warning-text {
-  color: var(--warning-color, #faad14);
   font-size: 13px;
+  color: var(--warning-color);
 }
 </style>

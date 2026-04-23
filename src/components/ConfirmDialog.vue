@@ -69,10 +69,7 @@ function handleConfirm() {
 </template>
 
 <style scoped>
-.confirm-dialog-modal :deep(.ant-modal-body) {
-  padding: 24px;
-}
-
+.confirm-dialog-modal :deep(.ant-modal-body) { padding: 24px; }
 .confirm-dialog-modal :deep(.ant-modal-footer) {
   padding: 12px 24px 24px;
   border-top: none;
@@ -81,26 +78,26 @@ function handleConfirm() {
 
 .confirm-dialog-content {
   display: flex;
-  gap: 16px;
   align-items: flex-start;
+  gap: 16px;
 }
 
 .confirm-dialog-icon {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--primary-bg);
   border-radius: 50%;
-  background: var(--primary-bg, rgba(22, 119, 255, 0.1));
-  color: var(--primary-color, #1677ff);
+  color: var(--primary-color);
   font-size: 20px;
 }
 
 .confirm-dialog-icon.danger {
-  background: var(--error-bg, rgba(255, 77, 79, 0.1));
-  color: var(--error-color, #ff4d4f);
+  background: var(--error-bg);
+  color: var(--error-color);
 }
 
 .confirm-dialog-body {
@@ -109,16 +106,16 @@ function handleConfirm() {
 }
 
 .confirm-dialog-title {
+  margin-bottom: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
   line-height: 1.5;
-  margin-bottom: 8px;
+  color: var(--text-primary);
 }
 
 .confirm-dialog-desc {
   font-size: 14px;
-  color: var(--text-secondary);
   line-height: 1.6;
+  color: var(--text-secondary);
 }
 </style>

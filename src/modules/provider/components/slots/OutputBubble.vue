@@ -80,20 +80,39 @@ const statusText = computed(() => {
 
 <style scoped>
 .output-bubble-container { display: flex; flex-direction: column; gap: 4px; }
+
 .output-bubble {
-  background: var(--bubble-assistant-bg, #f5f5f5); border-radius: 8px;
-  border-bottom-left-radius: 2px; padding: 6px 10px; max-width: 100%;
+  max-width: 100%;
+  padding: 6px 10px;
+  background: var(--bubble-assistant-bg);
+  border-radius: 8px;
+  border-bottom-left-radius: 2px;
   transition: all 150ms ease-out;
 }
-.output-bubble.is-error { background: var(--error-bg, #fff2f0); border: 1px solid var(--error-color, #ff4d4f); }
-.output-bubble.is-empty { background: var(--bg-secondary, #fafafa); }
-.bubble-content { font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+.output-bubble.is-error {
+  background: var(--error-bg);
+  border: 1px solid var(--error-color);
+}
+.output-bubble.is-empty { background: var(--bg-secondary); }
+
+.bubble-content {
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .output-text { color: var(--text-primary); }
-.streaming-cursor::after { content: '█'; animation: blink 1s step-end infinite; color: var(--primary-color); }
-.bubble-placeholder { color: var(--text-tertiary); font-size: 11px; font-style: italic; }
+.streaming-cursor::after {
+  content: '█';
+  color: var(--primary-color);
+  animation: blink 1s step-end infinite;
+}
+.bubble-placeholder {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-tertiary);
+}
+
 .output-metrics { display: flex; align-items: center; gap: 2px; }
 .tool-calls-section { margin-top: 2px; }
-
-[data-theme="dark"] .output-bubble { background: var(--bubble-assistant-bg, #2d3748); }
-[data-theme="dark"] .output-bubble.is-empty { background: var(--bg-secondary, #1a202c); }
 </style>

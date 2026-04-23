@@ -543,19 +543,17 @@ function getDisplayTitle(item: HistoryItem): string {
 
 <style scoped>
 .history-search {
-  margin-bottom: 16px;
   flex-shrink: 0;
+  margin-bottom: 16px;
 }
 
 .history-content {
-  overflow-y: auto;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
 }
 
-.history-group {
-  margin-bottom: 24px;
-}
+.history-group { margin-bottom: 24px; }
 
 .group-header {
   display: flex;
@@ -565,28 +563,19 @@ function getDisplayTitle(item: HistoryItem): string {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
 }
+.group-count { font-size: 12px; }
 
-.group-count {
-  font-size: 12px;
-}
-
-.history-timeline {
-  padding-left: 4px;
-}
+.history-timeline { padding-left: 4px; }
 
 .history-item {
+  margin-bottom: 8px;
+  padding: 12px;
   background: var(--card-bg);
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  transition: all var(--duration-normal) var(--ease-out-expo);
   cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out-expo);
 }
-
-.history-item:hover {
-  background: var(--hover-bg);
-}
-
+.history-item:hover { background: var(--hover-bg); }
 .history-item.is-expanded {
   background: var(--card-solid);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -597,7 +586,6 @@ function getDisplayTitle(item: HistoryItem): string {
   flex-direction: column;
   gap: 8px;
 }
-
 .item-title-row {
   display: flex;
   align-items: center;
@@ -610,124 +598,82 @@ function getDisplayTitle(item: HistoryItem): string {
   cursor: pointer;
   transition: color var(--duration-fast);
 }
-
-.star-icon:hover {
-  color: var(--warning-color);
-}
-
-.star-icon.is-starred {
-  color: var(--warning-color);
-}
+.star-icon:hover,
+.star-icon.is-starred { color: var(--warning-color); }
 
 .item-title {
   flex: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.item-meta {
-  display: flex;
-  align-items: center;
-}
-
-.item-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
+.item-meta { display: flex; align-items: center; }
+.item-metrics { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .item-details {
   margin-top: 12px;
   background: transparent !important;
 }
+.item-details :deep(.ant-collapse-content-box) { padding: 0 !important; }
 
-.item-details :deep(.ant-collapse-content-box) {
-  padding: 0 !important;
-}
-
-.detail-section {
-  margin-bottom: 12px;
-}
-
+.detail-section { margin-bottom: 12px; }
 .detail-label {
   display: block;
-  font-size: 12px;
   margin-bottom: 4px;
+  font-size: 12px;
 }
 
 .messages-collapse {
-  background: transparent !important;
   margin-top: 4px;
+  background: transparent !important;
 }
-
-.messages-collapse :deep(.ant-collapse-item) {
-  border-bottom: 1px solid var(--border-color);
-}
-
-.messages-collapse :deep(.ant-collapse-item:last-child) {
-  border-bottom: none;
-}
-
+.messages-collapse :deep(.ant-collapse-item) { border-bottom: 1px solid var(--border-color); }
+.messages-collapse :deep(.ant-collapse-item:last-child) { border-bottom: none; }
 .messages-collapse :deep(.ant-collapse-header) {
   padding: 8px 12px !important;
   align-items: center !important;
 }
-
-.messages-collapse :deep(.ant-collapse-content-box) {
-  padding: 0 12px 12px !important;
-}
+.messages-collapse :deep(.ant-collapse-content-box) { padding: 0 12px 12px !important; }
 
 .message-header {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1;
 }
-
 .message-role-tag {
   flex-shrink: 0;
   margin-right: 0 !important;
 }
-
 .message-preview {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 12px;
 }
 
 .message-editor-wrapper {
   height: 220px;
-  border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--border-color);
+  border-radius: 6px;
 }
 
-.messages-empty {
-  margin: 8px 0 !important;
-}
+.messages-empty { margin: 8px 0 !important; }
 
-.tools-collapse {
-  background: transparent !important;
-}
-
-.tools-collapse :deep(.ant-collapse-header) {
-  padding: 8px 0 !important;
-}
-
-.tools-collapse :deep(.ant-collapse-content-box) {
-  padding: 0 !important;
-}
+.tools-collapse { background: transparent !important; }
+.tools-collapse :deep(.ant-collapse-header) { padding: 8px 0 !important; }
+.tools-collapse :deep(.ant-collapse-content-box) { padding: 0 !important; }
 
 .tools-editor-wrapper {
   height: 120px;
-  border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--border-color);
+  border-radius: 6px;
 }
 
 .item-actions {
@@ -735,7 +681,5 @@ function getDisplayTitle(item: HistoryItem): string {
   border-top: 1px solid var(--border-color);
 }
 
-.history-empty {
-  margin-top: 48px;
-}
+.history-empty { margin-top: 48px; }
 </style>

@@ -40,32 +40,60 @@ async function copyThinking() {
 
 <style scoped>
 .thinking-section { margin-bottom: 4px; }
+
 .thinking-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 8px; cursor: pointer; user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
   background: var(--thinking-header-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
   border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  user-select: none;
 }
-.thinking-title { color: #fff; font-size: 11px; font-weight: 500; }
-.expand-icon { color: rgba(255,255,255,0.8); font-size: 10px; }
+.thinking-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+}
+.expand-icon {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+}
 .expand-down::after { content: '▼'; }
 .expand-right::after { content: '▶'; }
+
 .thinking-copy-btn {
-  background: none; border: none; color: #fff; cursor: pointer; font-size: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 10px;
+  color: #fff;
+  cursor: pointer;
 }
+
 .thinking-bubble {
+  max-height: 200px;
+  padding: 8px 10px;
+  overflow-y: auto;
   background: var(--thinking-bg, linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%));
   border: 1px solid var(--thinking-border, rgba(102,126,234,0.3));
-  border-top: none; border-radius: 0 0 6px 6px;
-  padding: 8px 10px; max-height: 200px; overflow-y: auto;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
 }
-.thinking-content { font-size: 11px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-.thinking-text { color: var(--text-secondary); font-style: italic; }
-.streaming-cursor::after { content: '█'; animation: blink 1s step-end infinite; color: var(--primary-color); }
-
-[data-theme="dark"] .thinking-bubble {
-  background: var(--thinking-bg, linear-gradient(135deg, rgba(102,126,234,0.15) 0%, rgba(118,75,162,0.15) 100%));
-  border-color: var(--thinking-border, rgba(102,126,234,0.4));
+.thinking-content {
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
-[data-theme="dark"] .thinking-text { color: var(--text-secondary, #a0aec0); }
+.thinking-text {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+.streaming-cursor::after {
+  content: '█';
+  color: var(--primary-color);
+  animation: blink 1s step-end infinite;
+}
 </style>
