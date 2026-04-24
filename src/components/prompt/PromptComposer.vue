@@ -181,19 +181,19 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer); });
 .message-card.is-dragging { opacity: 0.5; transform: scale(0.98); }
 .message-card.is-drag-over { border-color: var(--primary-color); border-style: dashed; }
 .message-header { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
-.drag-handle { cursor: grab; color: var(--text-tertiary); padding: 2px; font-size: 12px; }
+.drag-handle { cursor: grab; color: var(--text-tertiary); padding: 2px; font-size: 14px; }
 .drag-handle:hover { color: var(--text-secondary); }
 .role-select { min-width: 85px; }
-.role-select :deep(.ant-select-selector) { font-size: 12px; height: 22px !important; }
+.role-select :deep(.ant-select-selector) { font-size: 14px; height: 22px !important; }
 .role-select :deep(.ant-select-selection-item) { line-height: 20px !important; }
-.message-index, .message-length { font-size: 10px; color: var(--text-tertiary); }
+.message-index, .message-length { font-size: 12px; color: var(--text-tertiary); }
 .message-actions { margin-left: auto; display: flex; gap: 0; }
 .message-actions :deep(.ant-btn) { width: 22px; height: 22px; padding: 0; }
-.message-editor { font-family: inherit; font-size: 13px; }
-.message-editor :deep(.ant-input) { font-size: 13px; line-height: 1.4; padding: 4px 8px; }
-.composer-empty { text-align: center; padding: 16px 12px; color: var(--text-tertiary); font-size: 12px; }
+.message-editor { font-family: inherit; font-size: 15px; }
+.message-editor :deep(.ant-input) { font-size: 15px; line-height: 1.4; padding: 4px 8px; }
+.composer-empty { text-align: center; padding: 16px 12px; color: var(--text-tertiary); font-size: 14px; }
 .image-thumbnails-readonly { margin-top: 4px; }
-.thumbnail-label-readonly { font-size: 9px; color: var(--text-tertiary); }
+.thumbnail-label-readonly { font-size: 11px; color: var(--text-tertiary); }
 
 /* 消息动画 */
 .message-enter-active { animation: message-in 150ms ease-out; }

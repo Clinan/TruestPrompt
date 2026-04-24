@@ -137,11 +137,11 @@ function createBuildRequestForSlot(slot: Slot) {
   align-items: center;
   gap: 4px;
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
 }
-.title-icon { font-size: 14px; }
+.title-icon { font-size: 16px; }
 
 .slots-grid {
   display: grid;

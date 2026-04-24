@@ -52,12 +52,12 @@ async function copyThinking() {
   user-select: none;
 }
 .thinking-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #fff;
 }
 .expand-icon {
-  font-size: 10px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
 }
 .expand-down::after { content: '▼'; }
@@ -67,7 +67,7 @@ async function copyThinking() {
   padding: 0;
   background: none;
   border: none;
-  font-size: 10px;
+  font-size: 12px;
   color: #fff;
   cursor: pointer;
 }
@@ -82,7 +82,7 @@ async function copyThinking() {
   border-radius: 0 0 6px 6px;
 }
 .thinking-content {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;

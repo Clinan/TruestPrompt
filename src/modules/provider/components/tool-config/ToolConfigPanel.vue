@@ -198,7 +198,7 @@ function handleCopyTemplate() {
   border-radius: 4px;
 }
 .editor-wrapper.large { height: 400px; }
-.editor-wrapper :deep(.cm-editor) { height: 100%; font-size: 12px; }
+.editor-wrapper :deep(.cm-editor) { height: 100%; font-size: 14px; }
 .editor-wrapper :deep(.cm-scroller) { overflow: auto !important; }
 .editor-wrapper :deep(.cm-gutters) {
   background-color: var(--bg-secondary);
@@ -207,9 +207,9 @@ function handleCopyTemplate() {
 .editor-wrapper :deep(.cm-diagnostic-error) { border-left: 3px solid var(--error-color); }
 
 .template-modal-content { display: flex; flex-direction: column; gap: 16px; }
-.template-description h4 { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; }
+.template-description h4 { margin: 0 0 8px 0; font-size: 16px; font-weight: 600; }
 .template-description ul { margin: 0; padding-left: 20px; list-style: none; }
-.template-description li { margin: 6px 0; font-size: 13px; line-height: 1.6; }
+.template-description li { margin: 6px 0; font-size: 15px; line-height: 1.6; }
 .template-description code {
   padding: 2px 6px;
   background: var(--bg-secondary);
@@ -222,6 +222,6 @@ function handleCopyTemplate() {
   border: 1px solid var(--border-color);
   border-radius: 4px;
 }
-.template-editor :deep(.cm-editor) { font-size: 12px; }
+.template-editor :deep(.cm-editor) { font-size: 14px; }
 .template-actions { display: flex; justify-content: flex-end; }
 </style>

@@ -61,5 +61,5 @@ async function copyOutput() {
 </template>
 
 <style scoped>
-.metric-tag { font-size: 10px; padding: 0 4px; line-height: 18px; }
+.metric-tag { font-size: 12px; padding: 0 4px; line-height: 18px; }
 </style>

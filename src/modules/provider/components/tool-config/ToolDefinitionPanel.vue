@@ -83,7 +83,7 @@ const emit = defineEmits<{
   border: 1px solid var(--border-color);
   border-radius: 4px;
 }
-.editor-wrapper :deep(.cm-editor) { height: 100%; font-size: 12px; }
+.editor-wrapper :deep(.cm-editor) { height: 100%; font-size: 14px; }
 .editor-wrapper :deep(.cm-scroller) { overflow: auto !important; }
 .editor-wrapper :deep(.cm-gutters) {
   background-color: var(--bg-secondary);

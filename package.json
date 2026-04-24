@@ -10,6 +10,10 @@
     "lint": "eslint . --ext .ts,.tsx,.vue"
   },
   "dependencies": {
+    "@ai-sdk/alibaba": "^1.0.17",
+    "@ai-sdk/openai-compatible": "^2.0.41",
+    "@ai-sdk/provider": "^3.0.8",
+    "@ai-sdk/provider-utils": "^4.0.23",
     "@ant-design/icons-vue": "^7.0.1",
     "@codemirror/lang-javascript": "^6.2.4",
     "@codemirror/lang-json": "^6.0.2",
@@ -25,7 +29,8 @@
     "parse-curl": "^0.2.6",
     "parse-curl-js": "^1.0.3",
     "vue": "^3.4.21",
-    "vue-codemirror": "^6.1.1"
+    "vue-codemirror": "^6.1.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@testing-library/vue": "^8.1.0",

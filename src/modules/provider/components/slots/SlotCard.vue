@@ -439,7 +439,7 @@ function handleUpdateToolCall(toolCall: any) {
   flex: 1;
   min-width: 90px;
 }
-.provider-select :deep(.ant-select-selector) { height: 26px !important; font-size: 12px; }
+.provider-select :deep(.ant-select-selector) { height: 26px !important; font-size: 14px; }
 .provider-select :deep(.ant-select-selection-item) { line-height: 24px !important; }
 
 .model-select-wrapper {
@@ -452,7 +452,7 @@ function handleUpdateToolCall(toolCall: any) {
 .model-select :deep(.ant-select-selector),
 .model-select :deep(.ant-input) {
   height: 26px !important;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 24px !important;
 }
 .model-select :deep(.ant-select-selection-search-input) { height: 24px !important; }
@@ -462,14 +462,14 @@ function handleUpdateToolCall(toolCall: any) {
 .slot-system-prompt { margin-bottom: 6px; }
 .slot-system-prompt :deep(.ant-input) {
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
 .section-label {
   display: block;
   margin-bottom: 2px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -481,7 +481,7 @@ function handleUpdateToolCall(toolCall: any) {
   border: 1px solid var(--border-color);
   border-radius: 4px;
 }
-.system-prompt-editor :deep(.cm-editor) { height: 100%; font-size: 12px; }
+.system-prompt-editor :deep(.cm-editor) { height: 100%; font-size: 14px; }
 .system-prompt-editor :deep(.cm-scroller) { overflow: auto; }
 .system-prompt-editor :deep(.cm-content) { padding: 8px; }
 
@@ -493,7 +493,7 @@ function handleUpdateToolCall(toolCall: any) {
 .slot-actions :deep(.ant-btn) {
   height: 26px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .slot-actions :deep(.ant-btn-icon-only) {
   width: 26px;

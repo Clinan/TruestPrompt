@@ -1,5 +1,6 @@
 import type { Plugin } from '../../../core/types';
 import { createOpenAICompatiblePlugin } from './strategies/openai';
+import { createAlibabaPlugin } from './strategies/alibaba';
 import { createGeminiPlugin } from './strategies/gemini';
 export * from './strategies/common';
 
@@ -36,16 +37,18 @@ export const plugins: Plugin[] = [
       { id: 'gemini-1.5-flash', label: 'gemini-1.5-flash' }
     ]
   }),
-  createOpenAICompatiblePlugin({
+  createAlibabaPlugin({
     id: 'aliyun-dashscope',
     name: 'Aliyun DashScope (通义)',
     defaultUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     apiKeyPlaceholder: '{{ALIYUN_API_KEY}}',
-    defaultModelsUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/models',
     fallbackModels: [
       { id: 'qwen-plus', label: 'qwen-plus' },
       { id: 'qwen-max', label: 'qwen-max' },
-      { id: 'qwen-vl-max', label: 'qwen-vl-max' }
+      { id: 'qwen-vl-max', label: 'qwen-vl-max' },
+      { id: 'qwq-plus', label: 'qwq-plus' },
+      { id: 'qwen3-max', label: 'qwen3-max' },
+      { id: 'qwen3-235b-a22b', label: 'qwen3-235b-a22b' }
     ]
   }),
   createOpenAICompatiblePlugin({

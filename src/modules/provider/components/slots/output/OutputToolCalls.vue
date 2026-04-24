@@ -71,7 +71,7 @@ function handleUpdateToolCall(toolCall: ToolCall) {
 .tool-calls-panel { background: transparent; }
 .tool-calls-panel :deep(.ant-collapse-header) {
   padding: 4px 8px !important; background: var(--code-bg);
-  border-radius: 4px; font-size: 11px;
+  border-radius: 4px; font-size: 13px;
 }
 .tool-calls-list {
   display: flex; flex-direction: column; gap: 8px; padding: 8px 0;

@@ -225,7 +225,7 @@ async function copyResult() {
 .tool-call-item.status-error   { border-left: 3px solid var(--error-color); }
 
 .tool-name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -247,7 +247,7 @@ async function copyResult() {
   justify-content: space-between;
   padding: 6px 10px;
   background: var(--bg-secondary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   user-select: none;
@@ -255,7 +255,7 @@ async function copyResult() {
 .section-header:hover { background: var(--bg-hover); }
 
 .section-title { color: var(--text-primary); }
-.section-toggle { font-size: 10px; color: var(--text-tertiary); }
+.section-toggle { font-size: 12px; color: var(--text-tertiary); }
 
 .section-content {
   padding: 8px;
@@ -275,7 +275,7 @@ async function copyResult() {
 .json-viewer :deep(.cm-editor) {
   min-height: 100px;
   max-height: 400px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .json-viewer :deep(.cm-scroller) {
   max-height: 400px;
@@ -292,6 +292,6 @@ async function copyResult() {
 .error-message-wrapper :deep(.cm-editor) {
   min-height: 100px;
   max-height: 400px;
-  font-size: 12px;
+  font-size: 14px;
 }
 </style>

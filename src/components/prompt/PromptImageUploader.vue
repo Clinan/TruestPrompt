@@ -203,7 +203,7 @@ function isImageError(imageId: string): boolean {
   gap: 2px;
   width: 100%;
   height: 100%;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 
@@ -222,7 +222,7 @@ function isImageError(imageId: string): boolean {
 .thumbnail-wrapper:hover .thumbnail-remove { opacity: 1; }
 
 .thumbnail-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-tertiary);
 }
 
@@ -254,7 +254,7 @@ function isImageError(imageId: string): boolean {
 }
 
 .upload-hint {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-tertiary);
 }
 </style>

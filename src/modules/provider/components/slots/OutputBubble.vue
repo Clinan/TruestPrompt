@@ -96,7 +96,7 @@ const statusText = computed(() => {
 .output-bubble.is-empty { background: var(--bg-secondary); }
 
 .bubble-content {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -108,7 +108,7 @@ const statusText = computed(() => {
   animation: blink 1s step-end infinite;
 }
 .bubble-placeholder {
-  font-size: 11px;
+  font-size: 13px;
   font-style: italic;
   color: var(--text-tertiary);
 }
