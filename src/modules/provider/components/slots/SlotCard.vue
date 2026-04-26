@@ -5,14 +5,14 @@
  * 
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.7, 3.8
  */
-import { computed, ref } from 'vue';
-import { 
-  Card, 
-  Select, 
+import { computed, ref, toRef } from 'vue';
+import {
+  Card,
+  Select,
   AutoComplete,
-  Button, 
-  Space, 
-  Progress, 
+  Button,
+  Space,
+  Progress,
   Tooltip,
   Badge
 } from 'ant-design-vue';
@@ -30,7 +30,7 @@ import OutputBubble from './OutputBubble.vue';
 import JsonEditor from '../../../../components/JsonEditor.vue';
 import ParamsModal from '../modals/ParamsModal.vue';
 import CurlModal from '../modals/CurlModal.vue';
-import { plugins } from '../../domain/plugins';
+import { useSlotCurl } from '../../../../composables/useSlotCurl';
 
 const props = defineProps<{
   slot: Slot;
@@ -128,11 +128,12 @@ function handleRefreshModels() {
 // 参数配置弹窗
 const paramsModalOpen = ref(false);
 
-// cURL 弹窗状态
-const curlModalOpen = ref(false);
-const curlCode = ref('');
-const curlTitle = ref('');
-const useCurlPlaceholder = ref(true);
+// cURL 导出（见 composables/useSlotCurl.ts）
+const curl = useSlotCurl({
+  slot: toRef(props, 'slot'),
+  providerProfiles: toRef(props, 'providerProfiles'),
+  buildRequest: props.buildRequest,
+});
 
 // 是否有自定义参数
 const hasParamOverride = computed(() => {
@@ -148,65 +149,6 @@ function openParamsModal() {
 function handleParamsSave(params: Record<string, unknown> | null) {
   const updatedSlot = { ...props.slot, paramOverride: params };
   emit('update:slot', updatedSlot);
-}
-
-// 获取当前 slot 的 provider profile
-function getProfile() {
-  return props.providerProfiles.find(p => p.id === props.slot.providerProfileId) || null;
-}
-
-// 获取当前 slot 的 plugin
-function getPlugin() {
-  const profile = getProfile();
-  const pluginId = profile?.pluginId || props.slot.pluginId || plugins[0].id;
-  return plugins.find(p => p.id === pluginId) || plugins[0];
-}
-
-// 构建 cURL 代码
-function buildCurlCode(): { title: string; code: string } | null {
-  const plugin = getPlugin();
-  const profile = getProfile();
-  if (!profile || !props.buildRequest) return null;
-  
-  const request = props.buildRequest();
-  const maskedProfile = useCurlPlaceholder.value 
-    ? { ...profile, apiKey: '' } 
-    : profile;
-  
-  try {
-    return {
-      title: `cURL（${props.slot.modelId || '未选择模型'}）`,
-      code: plugin.buildCurl(maskedProfile, request)
-    };
-  } catch (err) {
-    return null;
-  }
-}
-
-// 打开 cURL 弹窗
-function handleExportCurl() {
-  const profile = getProfile();
-  if (!profile) {
-    return;
-  }
-  
-  const snippet = buildCurlCode();
-  if (!snippet) {
-    return;
-  }
-  
-  curlTitle.value = snippet.title;
-  curlCode.value = snippet.code;
-  curlModalOpen.value = true;
-}
-
-// 切换占位符时重新构建 cURL
-function handlePlaceholderChange(value: boolean) {
-  useCurlPlaceholder.value = value;
-  const snippet = buildCurlCode();
-  if (snippet) {
-    curlCode.value = snippet.code;
-  }
 }
 
 // 处理工具调用执行
@@ -328,7 +270,7 @@ function handleUpdateToolCall(toolCall: any) {
         </Tooltip>
         
         <Tooltip title="导出 cURL">
-          <Button @click="handleExportCurl">
+          <Button @click="curl.exportCurl">
             <template #icon><ExportOutlined /></template>
           </Button>
         </Tooltip>
@@ -355,11 +297,11 @@ function handleUpdateToolCall(toolCall: any) {
     
     <!-- cURL 导出弹窗 -->
     <CurlModal
-      v-model:open="curlModalOpen"
-      :title="curlTitle"
-      :code="curlCode"
-      :use-placeholder="useCurlPlaceholder"
-      @update:use-placeholder="handlePlaceholderChange"
+      v-model:open="curl.open.value"
+      :title="curl.title.value"
+      :code="curl.code.value"
+      :use-placeholder="curl.usePlaceholder.value"
+      @update:use-placeholder="curl.setPlaceholder"
     />
     
     <!-- 输出区域 -->
