@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 
 const props = defineProps<{
   thinking: string;
@@ -9,6 +9,40 @@ const props = defineProps<{
 
 const copiedThinking = ref(false);
 const showThinking = ref(true);
+const thinkingBubbleRef = ref<HTMLElement | null>(null);
+const shouldStickToBottom = ref(true);
+
+function updateStickToBottomState() {
+  const el = thinkingBubbleRef.value;
+  if (!el) return;
+  const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+  shouldStickToBottom.value = distanceToBottom < 24;
+}
+
+async function scrollThinkingToBottom() {
+  await nextTick();
+  const el = thinkingBubbleRef.value;
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
+}
+
+watch(
+  () => props.thinking,
+  (next, prev) => {
+    if (!next || !prev) {
+      shouldStickToBottom.value = true;
+    }
+    if (!props.isStreaming || !showThinking.value || !shouldStickToBottom.value) return;
+    void scrollThinkingToBottom();
+  },
+  { flush: 'post' }
+);
+
+watch(showThinking, (visible) => {
+  if (!visible || !props.isStreaming) return;
+  shouldStickToBottom.value = true;
+  void scrollThinkingToBottom();
+});
 
 async function copyThinking() {
   if (!props.thinking) return;
@@ -29,7 +63,12 @@ async function copyThinking() {
         {{ copiedThinking ? '✓' : '复制' }}
       </button>
     </div>
-    <div v-show="showThinking" class="thinking-bubble">
+    <div
+      v-show="showThinking"
+      ref="thinkingBubbleRef"
+      class="thinking-bubble"
+      @scroll="updateStickToBottomState"
+    >
       <div class="thinking-content">
         <span class="thinking-text">{{ props.thinking }}</span>
         <span v-if="props.isStreaming && !props.hasOutput" class="streaming-cursor"></span>
@@ -73,7 +112,7 @@ async function copyThinking() {
 }
 
 .thinking-bubble {
-  max-height: 200px;
+  max-height: clamp(220px, 42vh, 520px);
   padding: 8px 10px;
   overflow-y: auto;
   background: var(--thinking-bg, linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%));

@@ -113,6 +113,7 @@ export function createAlibabaPlugin(options: AlibabaCompatibleConfig): Plugin {
         maxOutputTokens: restParams.max_tokens as number | undefined,
         providerOptions: { alibaba: alibabaOptions },
         abortSignal: controller.signal,
+        includeRawChunks: true,
       });
 
       // AI SDK doStream 返回 ReadableStream<LanguageModelV3StreamPart>
@@ -271,10 +272,15 @@ function mapStreamPartToPluginChunk(
       }
       return null;
     case 'raw':
-      // 原始 SSE chunk - 对于阿里云，可能包含 reasoning_content
-      // 但 doStream 应该已经解析好了，这里不需要再处理
+      // 诊断：打印 SDK schema 校验前的原始 Qwen chunk，定位丢内容来源
+      console.debug('[alibaba/raw]', part.rawValue);
+      return null;
+    case 'error':
+      // 诊断：SDK schema 校验失败时会 enqueue error 并丢弃整条 chunk 的内容
+      console.error('[alibaba/error] chunk dropped by SDK', part.error);
       return null;
     default:
+      console.warn('[alibaba/unknown-part]', part?.type, part);
       return null;
   }
 }
